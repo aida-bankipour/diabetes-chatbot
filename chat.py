@@ -8,7 +8,8 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 app = Flask(__name__)  
-
+print("Checking files in mlp_model directory:")
+print(os.listdir(os.path.join(BASE_DIR, 'mlp_model')))
 # بارگذاری مدل  
 model_path = os.path.join(BASE_DIR, 'mlp_model', 'mlp_model.keras')
 print("Model path:", model_path)  # چاپ مسیر فایل مدل
