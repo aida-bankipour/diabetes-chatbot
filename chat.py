@@ -11,6 +11,7 @@ app = Flask(__name__)
 
 # بارگذاری مدل  
 model_path = os.path.join(BASE_DIR, 'mlp_model', 'mlp_model.keras')
+print("Model path:", model_path)  # چاپ مسیر فایل مدل
 model = tf.keras.models.load_model(model_path)  
 
 # دیکشنری برای نگهداری وضعیت کاربر  
