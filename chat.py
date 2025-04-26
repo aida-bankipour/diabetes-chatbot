@@ -2,8 +2,7 @@ from flask import Flask, render_template, request, jsonify
 import numpy as np  
 import re  
 import tensorflow as tf 
-import os
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+import osBASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 app = Flask(__name__)  
