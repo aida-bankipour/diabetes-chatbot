@@ -1,7 +1,8 @@
 from flask import Flask, render_template, request, jsonify  
 import numpy as np  
 import re  
-import tensorflow as tf 
+import tensorflow as tf
+tf.config.set_soft_device_placement(True)
 import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
