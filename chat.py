@@ -298,5 +298,6 @@ def predict_more_accurate_diabetes_response(data):
     else:  
         return ("بر اساس اطلاعات وارد شده، احتمال دیابت وجود ندارد.<br>وضعیت سلامتی شما خوب است")  
 
-if __name__ == "__main__":  
-    app.run(debug=True) 
+if __name__ == "__main__":
+    app.run(debug=True, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+ 
