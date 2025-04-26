@@ -1,13 +1,15 @@
 from flask import Flask, render_template, request, jsonify  
 import numpy as np  
 import re  
-import tensorflow as tf  
+import tensorflow as tf 
+import os
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 
 app = Flask(__name__)  
 
 # بارگذاری مدل  
-model_path = "mlp_model/mlp_model.keras"
+model_path = os.path.join(BASE_DIR, 'mlp_model', 'mlp_model.keras')
 model = tf.keras.models.load_model(model_path)  
 
 # دیکشنری برای نگهداری وضعیت کاربر  
