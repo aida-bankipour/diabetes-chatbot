@@ -7,7 +7,7 @@ import tensorflow as tf
 app = Flask(__name__)  
 
 # بارگذاری مدل  
-model_path = r'D:\Project\diabetes-chatbot\mlp_model\mlp_model.keras'  
+model_path = "mlp_model/mlp_model.keras"
 model = tf.keras.models.load_model(model_path)  
 
 # دیکشنری برای نگهداری وضعیت کاربر  
