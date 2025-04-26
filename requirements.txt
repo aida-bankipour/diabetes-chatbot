@@ -2,3 +2,4 @@ Flask
 numpy
 tensorflow
 tensorflow_intel
+gunicorn
