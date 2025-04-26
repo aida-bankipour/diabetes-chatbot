@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fa">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> <!-- Font Awesome برای آیکون‌ها -->
+    <title>چت‌بات فارسی</title>
+    <style>
+        body {
+            font-family: "Vazir", sans-serif;
+            direction: rtl;
+            text-align: right;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+        .chat-container {
+            max-width: 600px;
+            height: 90%;
+            margin: 5% auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-box {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+            padding: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 5px;
+            background-color: #fafafa;
+        }
+        .message {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            border-radius: 5px;
+        }
+        .bot {
+            background-color: #f1f1f1;
+            text-align: right;
+            color: #333;
+        }
+        .user {
+            background-color: #007bff;
+            text-align: left;
+            color: white;
+        }
+        .user-message, .bot-message {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+        }
+        .user-message {
+            text-align: left;
+            color: #fff;
+            background-color: #007bff;
+            margin-left: auto;
+        }
+        .bot-message {
+            text-align: right;
+            color: #333;
+            background-color: #f1f1f1;
+            margin-right: auto;
+        }
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            margin-right: 10px;
+            font-size: 16px;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-box" id="chat-box">
+            <!-- پیام‌ها در اینجا نمایش داده می‌شوند -->
+        </div>
+        <input type="hidden" id="user-id" value="unique_user_id"> <!-- شناسه یکتا -->
+        <div class="input-container" style="display: flex;">
+            <input type="text" id="user-input" placeholder="پیام خود را بنویسید...">
+            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i> ارسال</button>
+        </div>
+        <div id="loading" class="loading">در حال بارگذاری...</div> <!-- نشانگر بارگذاری -->
+    </div>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+    
+        function typeMessage(element, message) {
+            let index = 0;
+            // تبدیل پیام به آرایه‌ای از کاراکترها برای پشتیبانی از ایموجی‌ها و HTML
+            
+            function typeChar() {
+                if (index < message.length) {
+                    // پردازش HTML و نمایش به‌صورت زنده
+                    const tempDiv = document.createElement('div');
+                    tempDiv.innerHTML = message.slice(0, index + 1); // پردازش تدریجی
+                    element.innerHTML = tempDiv.innerHTML; // انتقال نتیجه
+                    index++;
+                    setTimeout(typeChar, 30); // تنظیم سرعت تایپ
+                }
+            }
+            typeChar();
+        }
+    
+        function addMessage(message, isBot) {
+            const messageElement = document.createElement('div');
+            messageElement.classList.add(isBot ? 'bot-message' : 'user-message');
+            chatBox.appendChild(messageElement);
+    
+            if (isBot) {
+                // استفاده از typeMessage برای پیام‌های ربات
+                typeMessage(messageElement, message);
+            } else {
+                // متن ساده برای پیام‌های کاربر
+                messageElement.textContent = message;
+            }
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+    
+        async function sendMessage() {
+            let userInput = document.getElementById('user-input').value;
+            let userId = document.getElementById('user-id').value; // دریافت user_id
+            let loading = document.getElementById('loading'); // نشانگر بارگذاری
+    
+            if (userInput) {
+                // نمایش پیام کاربر
+                addMessage(userInput, false);
+                document.getElementById('user-input').value = '';  // پاک کردن input
+    
+                // نمایش نشانگر بارگذاری
+                loading.style.display = 'block';
+    
+                try {
+                    // ارسال پیام به سرور و دریافت پاسخ
+                    let response = await fetch('/get_response', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: 'message=' + encodeURIComponent(userInput) + '&user_id=' + encodeURIComponent(userId) // ارسال user_id
+                    });
+    
+                    // بررسی وضعیت پاسخ
+                    if (!response.ok) {
+                        throw new Error(`خطا: ${response.status}`);
+                    }
+    
+                    let data = await response.json();
+    
+                    // نمایش پیام ربات
+                    addMessage(data.response, true);
+                } catch (error) {
+                    // در صورت بروز خطا، پیام خطا را نمایش بدهید
+                    addMessage('خطا در ارسال پیام: ' + error.message, true);
+                } finally {
+                    // مخفی کردن نشانگر بارگذاری
+                    loading.style.display = 'none';
+                }
+            }
+            document.getElementById('user-input').addEventListener('keydown', function(event) {
+                if (event.key === 'Enter') {
+                    sendMessage(); // فراخوانی تابع ارسال پیام
+                    event.preventDefault(); // جلوگیری از ایجاد خط جدید در input
+                }
+            });
+
+        }
+    </script>    
+</body>
+</html>
