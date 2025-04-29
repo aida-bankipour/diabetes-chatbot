@@ -1,197 +1,316 @@
 <!DOCTYPE html>
 <html lang="fa">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet"> <!-- Font Awesome برای آیکون‌ها -->
-    <title>چت‌بات فارسی</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>چت‌بات تشخیص دیابت</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134.0/examples/js/loaders/GLTFLoader.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap');
+
         body {
-            font-family: "Vazir", sans-serif;
             direction: rtl;
-            text-align: right;
-            background-color: #f0f0f0;
-            margin: 0;
-            padding: 0;
-            height: 100vh;
+            font-family: "Vazirmatn", sans-serif;
+            animation: fadeInBody 1s ease-out;
+            transition: background-color 0.3s ease;
         }
-        .chat-container {
-            max-width: 600px;
-            height: 90%;
-            margin: 5% auto;
-            background-color: white;
-            padding: 20px;
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: #c4b5fd;
             border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes fadeInBody {
+            from {
+                opacity: 0;
+                transform: translateY(40px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        /* چت‌باکس با تصویر پس‌زمینه */
+        #chat-box {
+            background-image: url('static/anatomybackground.jpg');
+            background-size: cover;
+            background-position: top;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+
+        /* DARK MODE کامل برای همه بخش‌ها */
+        .dark-mode body,
+        .dark-mode #body,
+        .dark-mode #chat-box,
+        .dark-mode #anatomy-panel {
+            background-color: #0f172a !important;
+            background-image: none !important;
+            color: #f8fafc !important;
+        }
+
+        .dark-mode .bg-white,
+        .dark-mode .bg-gradient-to-b,
+        .dark-mode .bg-gradient-to-bl {
+            background-color: #1e293b !important;
+            background-image: none !important;
+            color: #f8fafc !important;
+        }
+
+        .dark-mode input,
+        .dark-mode textarea {
+            background-color: #334155 !important;
+            color: #f8fafc;
+            border-color: #475569;
+        }
+
+        .dark-mode .text-white,
+        .dark-mode .text-indigo-600 {
+            color: #f8fafc !important;
+        }
+
+        .dark-mode .bg-indigo-100 {
+            background-color: #334155 !important;
+            color: #f8fafc !important;
+        }
+
+        .dark-mode .bg-indigo-600 {
+            background-color: #475569 !important;
+        }
+
+        /* Symptom options form */
+        .symptom-options {
             display: flex;
-            flex-direction: column;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+            justify-content: flex-end;
         }
-        .chat-box {
-            flex-grow: 1;
-            overflow-y: auto;
-            margin-bottom: 20px;
-            padding: 10px;
-            border: 1px solid #e0e0e0;
-            border-radius: 5px;
-            background-color: #fafafa;
-        }
-        .message {
-            display: block;
-            margin-bottom: 10px;
-            padding: 10px;
-            border-radius: 5px;
-        }
-        .bot {
-            background-color: #f1f1f1;
-            text-align: right;
-            color: #333;
-        }
-        .user {
-            background-color: #007bff;
-            text-align: left;
-            color: white;
-        }
-        .user-message, .bot-message {
-            margin: 10px 0;
-            padding: 10px;
-            border-radius: 10px;
-            max-width: 70%;
-        }
-        .user-message {
-            text-align: left;
-            color: #fff;
-            background-color: #007bff;
-            margin-left: auto;
-        }
-        .bot-message {
-            text-align: right;
-            color: #333;
-            background-color: #f1f1f1;
-            margin-right: auto;
-        }
-        input[type="text"] {
-            flex-grow: 1;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-            margin-right: 10px;
-            font-size: 16px;
-        }
-        button {
-            padding: 10px 20px;
-            background-color: #007bff;
-            color: white;
-            border: none;
-            border-radius: 5px;
+
+        .symptom-options button {
+            background-color: #e0e7ff;
+            color: #1e3a8a;
+            padding: 6px 12px;
+            border-radius: 9999px;
+            font-size: 14px;
             cursor: pointer;
-            font-size: 16px;
+            transition: all 0.2s ease;
+            border: none;
         }
-        button:hover {
-            background-color: #0056b3;
+
+        .symptom-options button:hover,
+        .symptom-options button.active {
+            background-color: #6366f1;
+            color: #fff;
         }
-        .loading {
+        
+
+        /* Symptom form display */
+        #symptom-form {
             display: none;
-            text-align: center;
-            font-size: 16px;
+            flex-direction: column;
+            align-items: flex-start;
+            margin: 12px 0;
+            gap: 12px;
+        }
+
+        #symptom-form.active {
+            display: flex;
+        }
+
+        /* Anatomy panel styling */
+        #anatomy-panel {
+            position: fixed;
+            top: 0;
+            right: -400px;
+            width: 400px;
+            height: 100%;
+            background-color: #ffffff;
+            box-shadow: -2px 0 8px rgba(0, 0, 0, 0.2);
+            transition: right 0.3s ease;
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #anatomy-panel.active {
+            right: 0;
+        }
+
+        .anatomy-canvas {
+            width: 100%;
+            height: 500px;
+            margin: 0 auto;
+            position: relative;
+        }
+
+        .dark-mode #anatomy-panel {
+            background-color: #1e293b !important;
+            color: #f8fafc !important;
+        }
+
+        /* Tooltip styling */
+        .tooltip {
+            position: absolute;
+            background-color: #333;
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            display: none;
+        }
+
+        /* Responsive layout for mobile */
+        @media (max-width: 640px) {
+            #anatomy-panel {
+                width: 100%;
+                right: -100%;
+            }
+
+            .max-w-[75%] {
+                max-width: 85%;
+            }
+        }
+
+        /* Loading indicator for 3D model */
+        .loading-spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 0, 0, .1);
+            border-radius: 50%;
+            border-top-color: #6366f1;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Pulse animation for active buttons */
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7);
+            }
+
+            70% {
+                box-shadow: 0 0 0 10px rgba(99, 102, 241, 0);
+            }
+
+            100% {
+                box-shadow: 0 0 0 0 rgba(99, 102, 241, 0);
+            }
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
         }
     </style>
 </head>
-<body>
-    <div class="chat-container">
-        <div class="chat-box" id="chat-box">
-            <!-- پیام‌ها در اینجا نمایش داده می‌شوند -->
+
+<body
+    class="bg-gradient-to-bl from-purple-200 via-indigo-100 to-sky-100 min-h-screen flex items-center justify-center p-4"
+    id="main-body">
+    <div class="chat-box-bg bg-white shadow-2xl rounded-3xl w-full max-w-3xl flex flex-col h-[90vh] border border-indigo-200">
+        <div
+            class="bg-gradient-to-l from-indigo-500 to-purple-500 text-white text-xl font-semibold p-4 rounded-t-3xl flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                
+                <span>چت‌بات تشخیص دیابت</span>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="toggleAnatomyPanel()" title="آناتومی" class="hover:text-blue-300 transition-colors">
+                    <i class="fas fa-male"></i>
+                </button>
+                <button onclick="simulateCapture()" title="دوربین" class="hover:text-yellow-300 transition-colors">
+                    <i class="fas fa-camera"></i>
+                </button>
+                <button onclick="simulateFileUpload()" title="فایل" class="hover:text-green-300 transition-colors">
+                    <i class="fas fa-folder-open"></i>
+                </button>
+                <button onclick="toggleDarkMode()" title="تغییر حالت تاریک"
+                    class="hover:text-pink-300 transition-colors">
+                    <i class="fas fa-adjust"></i>
+                </button>
+            </div>
         </div>
-        <input type="hidden" id="user-id" value="unique_user_id"> <!-- شناسه یکتا -->
-        <div class="input-container" style="display: flex;">
-            <input type="text" id="user-input" placeholder="پیام خود را بنویسید...">
-            <button onclick="sendMessage()"><i class="fas fa-paper-plane"></i> ارسال</button>
+
+        <div id="chat-box"
+            class="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-white to-indigo-50 flex flex-col"></div>
+
+        <input type="hidden" id="user-id" value="unique_user_id" />
+
+        <div class="p-4 border-t bg-white flex items-center gap-3">
+            <input type="text" id="user-input" placeholder="پیام خود را بنویسید..."
+                class="flex-grow px-4 py-2 rounded-full border border-indigo-300 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+            <button id="send-button" onclick="sendMessage()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full shadow-md transition-colors">
+                <i class="fas fa-paper-plane"></i>
+            </button>
+            <button onclick="startListening()" title="میکروفن"
+                class="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-2 rounded-full transition-colors">
+                <i class="fas fa-microphone"></i>
+            </button>
         </div>
-        <div id="loading" class="loading">در حال بارگذاری...</div> <!-- نشانگر بارگذاری -->
+
+        <div id="loading" class="text-center text-sm text-indigo-600 py-2 hidden animate-pulse">⏳ در حال پردازش پیام...
+        </div>
     </div>
 
-    <script>
-        const chatBox = document.getElementById('chat-box');
-    
-        function typeMessage(element, message) {
-            let index = 0;
-            // تبدیل پیام به آرایه‌ای از کاراکترها برای پشتیبانی از ایموجی‌ها و HTML
-            
-            function typeChar() {
-                if (index < message.length) {
-                    // پردازش HTML و نمایش به‌صورت زنده
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = message.slice(0, index + 1); // پردازش تدریجی
-                    element.innerHTML = tempDiv.innerHTML; // انتقال نتیجه
-                    index++;
-                    setTimeout(typeChar, 30); // تنظیم سرعت تایپ
-                }
-            }
-            typeChar();
-        }
-    
-        function addMessage(message, isBot) {
-            const messageElement = document.createElement('div');
-            messageElement.classList.add(isBot ? 'bot-message' : 'user-message');
-            chatBox.appendChild(messageElement);
-    
-            if (isBot) {
-                // استفاده از typeMessage برای پیام‌های ربات
-                typeMessage(messageElement, message);
-            } else {
-                // متن ساده برای پیام‌های کاربر
-                messageElement.textContent = message;
-            }
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
-    
-        async function sendMessage() {
-            let userInput = document.getElementById('user-input').value;
-            let userId = document.getElementById('user-id').value; // دریافت user_id
-            let loading = document.getElementById('loading'); // نشانگر بارگذاری
-    
-            if (userInput) {
-                // نمایش پیام کاربر
-                addMessage(userInput, false);
-                document.getElementById('user-input').value = '';  // پاک کردن input
-    
-                // نمایش نشانگر بارگذاری
-                loading.style.display = 'block';
-    
-                try {
-                    // ارسال پیام به سرور و دریافت پاسخ
-                    let response = await fetch('/get_response', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/x-www-form-urlencoded',
-                        },
-                        body: 'message=' + encodeURIComponent(userInput) + '&user_id=' + encodeURIComponent(userId) // ارسال user_id
-                    });
-    
-                    // بررسی وضعیت پاسخ
-                    if (!response.ok) {
-                        throw new Error(`خطا: ${response.status}`);
-                    }
-    
-                    let data = await response.json();
-    
-                    // نمایش پیام ربات
-                    addMessage(data.response, true);
-                } catch (error) {
-                    // در صورت بروز خطا، پیام خطا را نمایش بدهید
-                    addMessage('خطا در ارسال پیام: ' + error.message, true);
-                } finally {
-                    // مخفی کردن نشانگر بارگذاری
-                    loading.style.display = 'none';
-                }
-            }
-            document.getElementById('user-input').addEventListener('keydown', function(event) {
-                if (event.key === 'Enter') {
-                    sendMessage(); // فراخوانی تابع ارسال پیام
-                    event.preventDefault(); // جلوگیری از ایجاد خط جدید در input
-                }
-            });
+    <!-- Anatomy panel -->
+    <div id="anatomy-panel">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold">نمایش آناتومی بدن</h2>
+            <button onclick="toggleAnatomyPanel()" class="text-gray-500 hover:text-gray-700 transition-colors">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="flex justify-center mb-4">
+            <button onclick="resetCamera()"
+                class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-full transition-colors">
+                بازنشانی دوربین
+            </button>
+        </div>
+        <div class="anatomy-canvas" id="anatomy-canvas">
+            <!-- No loading indicator here - will be added programmatically for better control -->
+        </div>
 
-        }
-    </script>    
+        <div class="mt-4 p-4 bg-indigo-50 rounded-lg">
+            <h3 class="font-semibold mb-2">راهنمای استفاده:</h3>
+            <ul class="text-sm space-y-1 list-disc list-inside">
+                <li>این قابلیت برای نسخه نمایشی فعال نیست.</li>
+                <li>با دو انگشت یا چرخ ماوس می‌توانید بزرگنمایی کنید.</li>
+                <li>با کشیدن ماوس مدل را بچرخانید.</li>
+            </ul>
+        </div>
+
+        <!-- Anatomy information section -->
+        <div class="mt-4">
+            <h3 class="font-semibold mb-2"></h3>
+            <div class="space-y-2 text-sm">
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+<script src="static/js/chatbot.js"></script>
+<script src="static/js/model-loader.js"></script>
+
 </body>
 </html>
