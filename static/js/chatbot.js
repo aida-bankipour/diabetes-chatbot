@@ -179,34 +179,6 @@ function startListening() {
     recognition.start();
 }
 
-// Voice output
-function speakText(text) {
-    if (!('speechSynthesis' in window)) {
-        console.error("Browser doesn't support speech synthesis");
-        return;
-    }
-
-    // Clean text from HTML tags and replace <br> with spaces
-    const cleanText = text.replace(/<[^>]*>/g, "").replace(/<br>/g, ". ");
-
-    // Create utterance with Persian language
-    const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = "fa-IR";
-    utterance.rate = 0.9; // Slightly slower for better comprehension
-
-    // Stop any current speech
-    window.speechSynthesis.cancel();
-
-    // Track speaking state
-    isSpeaking = true;
-    utterance.onend = function () {
-        isSpeaking = false;
-    };
-
-    // Speak the text
-    window.speechSynthesis.speak(utterance);
-}
-
 // Toggle dark mode
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;

@@ -1,428 +1,456 @@
 from flask import Flask, render_template, request, jsonify
 import numpy as np
 import os
-import csv
 import logging
 import re
 from datetime import datetime
-import tensorflow as tf 
-import logging 
+import tensorflow as tf
+import google.generativeai as genai
+import uuid
 
 # Set up logging
-logging.basicConfig(level=logging.DEBUG)
-# تنظیمات اولیه logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 
+# Configure Gemini API
+try:
+    genai.configure(api_key=os.environ.get("GEMINI_API_KEY"))
+except Exception as e:
+    logging.error(f"Error configuring Gemini API: {e}. Please ensure GEMINI_API_KEY is set.")
 
-# بارگذاری مدل  
-# بارگذاری مدل
-model_path = 'mlp_model/mlp_model.keras'
-model = tf.keras.models.load_model(model_path) 
+# Load MLP model
+try:
+    model_path = 'mlp_model/mlp_model.keras'
+    model = tf.keras.models.load_model(model_path)
+    logging.info("MLP model loaded successfully")
+except Exception as e:
+    logging.error(f"Error loading MLP model: {e}")
+    model = None
 
-# Dictionary to keep track of user state
+# User state storage
 user_data = {}
 
-# List of valid symptoms
+# Symptom keywords
 symptom_keywords = {
-    "پرادراری": ["پرادراری", "ادرار زیاد", "ادرار بیش از حد", "زیاد دستشویی می‌رم", "دستشویی رفتن زیاد", "شب‌ها بیدار می‌شم برای ادرار", "شب‌ها زیاد بیدار می‌شم"],
-    "عطش": ["عطش", "تشنگی", "خیلی تشنه‌ام", "مدام آب می‌خورم", "زیاد آب می‌خورم"],
-    "کاهش وزن": ["کاهش وزن", "افت وزن", "وزنم کم شده", "بدون دلیل وزن کم کردم", "ناگهانی وزن کم کردم"],
-    "ضعف": ["ضعف", "بی‌حالی", "انرژی ندارم", "همیشه خسته‌ام", "خیلی بی‌حال شدم"],
+    "پرادراری": ["پرادراری", "ادرار زیاد", "ادرار بیش از حد", "زیاد دستشویی می‌رم", "دستشویی رفتن زیاد", "شب‌ها بیدار می‌شم برای ادرار"],
+    "عطش": ["عطش", "تشنگی", "خیلی تشنه‌ام", "مدام آب می‌خورم", "زیاد آب می‌خورم", "پرنوشی", "استسقاء"],
+    "کاهش وزن": ["کاهش وزن", "افت وزن", "وزنم کم شده", "بدون دلیل وزن کم کردم"],
+    "ضعف": ["ضعف", "بی‌حالی", "انرژی ندارم", "همیشه خسته‌ام", "احساس ضعف"],
     "پرخوری": ["پرخوری", "زیاد می‌خورم", "اشتهام زیاد شده", "گرسنگی مداوم دارم"],
-    "عفونت قارچی": ["عفونت قارچی", "عفونت در ناحیه تناسلی", "سوزش یا خارش ناحیه تناسلی", "بوی نامطبوع"],
-    "تاری دید": ["تاری دید", "کاهش میدان دید", "چشمام تار می‌بینه", "دیدم خوب نیست", "چیزا رو تار می‌بینم"],
-    "خارش": ["خارش", "خشکی پوست", "خارش بدن", "پوستم می‌خاره", "پوستم خشک شده"],
-    "عصبانیت": ["عصبانیت", "تحریک‌پذیری", "زود از کوره در می‌رم", "زود عصبی می‌شم", "کنترل احساسات سخت شده"],
-    "تأخیر در بهبود": ["تأخیر در بهبود", "زخم‌هام دیر خوب می‌شن", "زخم‌هام باقی می‌مونن", "خوب نشدن زخم‌ها"],
-    "فلج جزئی": ["فلج جزئی", "ضعف عضلانی", "عضلاتم ناتوان شدن", "بخشی از بدنم خوب کار نمی‌کنه"],
-    "درد عضلانی": ["درد عضلانی", "کشیدگی عضلات", "بدنم درد می‌کنه", "عضلاتم می‌کشه"],
-    "سفتی عضلات": ["سفتی عضلات", "خشکی عضلات", "عضلاتم گرفته", "انعطاف ندارم"],
+    "عفونت قارچی": ["عفونت قارچی", "عفونت در ناحیه تناسلی", "سوزش یا خارش ناحیه تناسلی"],
+    "تاری دید": ["تاری دید", "کاهش میدان دید", "چشمام تار می‌بینه", "دیدم خوب نیست"],
+    "خارش": ["خارش", "خشکی پوست", "خارش بدن", "پوستم می‌خاره"],
+    "عصبانیت": ["عصبانیت", "تحریک‌پذیری", "زود عصبی می‌شم", "کنترل احساسات سخت شده"],
+    "تأخیر در بهبود": ["تأخیر در بهبود", "زخم‌هام دیر خوب می‌شن", "خوب نشدن زخم‌ها"],
+    "فلج جزئی": ["فلج جزئی", "ضعف عضلانی", "عضلاتم ناتوان شدن", "نا توانی در حرکت"],
+    "درد عضلانی": ["درد عضلانی", "کشیدگی عضلات", "بدنم درد می‌کنه"],
+    "سفتی عضلات": ["سفتی عضلات", "خشکی عضلات", "عضلاتم گرفته", "گرفتگی عضلات", "درد عضلانی"],
     "ریزش مو": ["ریزش مو", "کم‌پشت شدن مو", "موهام میریزه"],
-    "چاقی": ["چاقی", "اضافه وزن", "خیلی چاق شدم", "وزنم رفته بالا"]
+    "چاقی": ["چاقی", "اضافه وزن", "خیلی چاق شدم", "وزنم رفته بالا"],
+    "قند خون بالا": ["قند خون \d+", "قند بالا \d+", "قند خون ناشتا \d+"]
 }
 
-positive_keywords = [
-    "بله", "آره", "اره", "دارم", "بعضی وقتا", "گاهی", "اکثرا", "همیشه", 
-    "میکنم", "احساس میکنم", "شده", "پیش میاد", "زیاد", "تا حدودی", "درگیرم",
-    "برام پیش اومده", "مشاهده کردم", "دیدم", "می‌ شوم", "احساس می‌کنم", "دچارم", "هستم"
-]
-
-negative_keywords = [
-    "نه", "خیر", "ندارم", "نمی‌کنم", "نیستم", "نمی‌شوم", "نمی‌خورم", "نمی‌رم", 
-    "اصلا", "نداشتم", "هرگز", "کم", "خیلی کم", "نادره", "به ندرت", "تقریباً نه"
-]
-
-# FAQ responses in Persian
-faq_responses = {
-    "علائم دیابت": 
-    "برخی علائم دیابت عبارتند از: پرادراری، تشنگی زیاد، کاهش وزن ناگهانی",
-    
-    "دیابت چیست": 
-    "دیابت یک بیماری مزمن است که در آن سطح قند خون (گلوکز) در بدن افزایش می‌یابد",
-
-    "علائم دیابت چیست": 
-    "برخی علائم دیابت عبارتند از: پرادراری، تشنگی زیاد، کاهش وزن ناگهانی",
-
-    "چگونه از دیابت پیشگیری کنیم": 
-    "با تغذیه سالم، ورزش منظم، کنترل وزن و چکاپ‌های منظم",
-
-    "علائم دیابت": 
-    "برخی علائم دیابت عبارتند از: پرادراری، تشنگی زیاد، کاهش وزن ناگهانی",
-
-    "پیشگیری از دیابت":
-    "پیشگیری از دیابت نیازمند تغذیه سالم و ورزش منظم است . همچنین چکاپ های منظم و کنترل وزن نیز میتواند به پیشگیری از دیابت کمک کند.",
-
-    "درمان دیابت چگونه است": 
-    "درمان دیابت شامل رژیم غذایی مناسب، ورزش، مصرف دارو یا انسولین",
-
-    "چه علائمی نشان‌دهنده دیابت هستند" : 
-    "پرادراری، تشنگی زیاد، کاهش وزن، خستگی، تاری دید، دیر خوب شدن زخم‌ها و عفونت‌های مکرر از جمله علائم دیابت هستند.",
-
-    "دیابت نوع ۱ چیست" : 
-    "دیابت نوع ۱ یک بیماری خودایمنی است که در آن بدن سلول‌های تولیدکننده انسولین در پانکراس را از بین می‌برد و معمولاً در کودکان و نوجوانان تشخیص داده می‌شود.",
-
-    "دیابت نوع یک چیست" : 
-    "دیابت نوع ۱ یک بیماری خودایمنی است که در آن بدن سلول‌های تولیدکننده انسولین در پانکراس را از بین می‌برد و معمولاً در کودکان و نوجوانان تشخیص داده می‌شود.",
-
-    "دیابت نوع ۲ چیست" :
-    " دیابت نوع ۲ شایع‌ترین نوع دیابت است که معمولاً در افراد بزرگ‌سال بروز می‌کند و ناشی از مقاومت بدن به انسولین یا کاهش تولید آن است.",
-
-    "دیابت نوع دو چیست" : 
-    "دیابت نوع ۲ شایع‌ترین نوع دیابت است که معمولاً در افراد بزرگ‌سال بروز می‌کند و ناشی از مقاومت بدن به انسولین یا کاهش تولید آن است.",
-
-    "آیا دیابت درمان دارد" :
-    "دیابت درمان قطعی ندارد، اما با تغییر سبک زندگی، رژیم غذایی مناسب، دارو و انسولین می‌توان آن را کنترل کرد",
-
-    "آیا دیابت ارثی است" :
-    "بله، سابقه خانوادگی یکی از عوامل خطر ابتلا به دیابت است، اما عوامل محیطی نیز در بروز آن نقش دارند.",
-
-    "چگونه می‌توان از دیابت پیشگیری کرد" :
-    "با تغذیه سالم، ورزش منظم، حفظ وزن مناسب و چکاپ‌های دوره‌ای می‌توان از بروز دیابت نوع ۲ جلوگیری کرد.",
-
-    "نقش انسولین در بدن چیست" :
-    "انسولین هورمونی است که به انتقال گلوکز از خون به سلول‌ها کمک می‌کند تا از آن به عنوان انرژی استفاده کنند.",
-
-    "اگر دیابت کنترل نشود، چه عوارضی دارد" :
-    "عوارض دیابت شامل بیماری‌های قلبی، آسیب به کلیه، مشکلات چشمی، آسیب عصبی و زخم‌های مزمن است.",
-
-    "دیابت بارداری چیست" :
-    "دیابت بارداری نوعی دیابت است که برای اولین بار در دوران بارداری تشخیص داده می‌شود و معمولاً پس از زایمان برطرف می‌شود.",
-
-    "چگونه قند خون را کنترل کنیم":
-    "با رعایت رژیم غذایی سالم، فعالیت بدنی منظم، مصرف دارو یا انسولین و اندازه‌گیری منظم قند خون می‌توان آن را کنترل کرد.",
-
-    "آیا افراد لاغر هم دیابت می‌گیرند" :
-    "بله، گرچه چاقی یکی از عوامل خطر است، اما دیابت می‌تواند در افراد لاغر نیز به دلایل ژنتیکی یا دیگر عوامل رخ دهد.",
-
-    "آیا دیابت باعث افسردگی می‌شود" :
-    "افراد مبتلا به دیابت به دلیل فشار روانی بیماری بیشتر در معرض افسردگی قرار دارند و نیاز به حمایت روحی دارند.",
-
-    "چه غذاهایی برای دیابتی‌ها مناسب هستند" :
-    "غذاهای کم‌قند، کم‌چرب، دارای فیبر بالا مانند سبزیجات، غلات کامل، گوشت بدون چربی و لبنیات کم‌چرب مناسب هستند.",
-
-    "آیا می‌توان از انسولین طبیعی استفاده کرد" :
-    "در حال حاضر انسولین موجود در بازار به صورت دارویی و تولید شده در آزمایشگاه‌ها است و انسولین طبیعی برای درمان استفاده نمی‌شود.",
-
-    "آیا دیابت قابل بازگشت است" :
-    "در برخی موارد دیابت نوع ۲ با کاهش وزن و تغییر سبک زندگی ممکن است بهبود یابد، اما به معنی درمان قطعی نیست.",
-
-    "چگونه از زخم پای دیابتی جلوگیری کنیم" :
-    "بررسی روزانه پاها، پوشیدن کفش مناسب، رعایت بهداشت و کنترل قند خون از راه‌های پیشگیری از زخم پای دیابتی است.",
-
-    "آیا استرس روی دیابت تاثیر دارد":
-    "بله، استرس می‌تواند باعث افزایش سطح قند خون شود و کنترل دیابت را سخت‌تر کند.",
-
-    "چه آزمایش‌هایی برای تشخیص دیابت انجام می‌شود" :
-    "آزمایش قند خون ناشتا، آزمایش HbA1c و تست تحمل گلوکز برای تشخیص دیابت استفاده می‌شوند.",
-
-    "آیا دیابت قابل کنترل است" :
-    "بله، دیابت با پایش منظم، رعایت رژیم غذایی، ورزش و مصرف داروها قابل کنترل است و افراد می‌توانند زندگی سالمی داشته باشند."
+# Structured question explanations
+question_explanations = {
+    "بیش از حد معمول ادرار": "یعنی بیشتر از حد معمول به دستشویی می‌روید، به‌خصوص شب‌ها.",
+    "تشنگی مداوم": "یعنی همیشه احساس تشنگی می‌کنید و حتی با نوشیدن آب هم برطرف نمی‌شود.",
+    "کاهش وزن ناگهانی": "یعنی بدون رژیم یا ورزش، وزنتان به‌سرعت کم شده است.",
+    "ضعف بدنی": "یعنی احساس خستگی یا کمبود انرژی دارید، حتی بدون فعالیت زیاد.",
+    "اشتها غیر عادی": "یعنی بیشتر از حد معمول احساس گرسنگی می‌کنید.",
+    "عفونت‌های قارچی": "یعنی عفونت‌های مکرر، مثل خارش یا سوزش در ناحیه تناسلی.",
+    "تاری دید": "یعنی اشیا را تار می‌بینید یا دیدتان واضح نیست.",
+    "خشکی یا خارش پوست": "یعنی پوستتان خشک شده یا مدام می‌خارد.",
+    "به سرعت عصبی شدن": "یعنی به‌راحتی و سریع عصبانی یا تحریک‌پذیر می‌شوید.",
+    "بهبود کند زخم‌ها": "یعنی زخم‌ها یا جراحت‌هایتان دیرتر از معمول خوب می‌شوند.",
+    "فلج جزئی": "یعنی ضعف یا کاهش توانایی حرکت در بخشی از بدن، مثل دست یا پا.",
+    "کشیدگی یا درد عضلانی": "یعنی در فعالیت‌های روزمره، عضلاتتان درد می‌کند یا می‌گیرد.",
+    "ریزش مو": "یعنی موهایتان بیشتر از حد معمول می‌ریزد یا کم‌پشت شده است.",
+    "اضافه وزن": "یعنی وزنتان بیشتر از حد سالم برای قد و سن شماست."
 }
 
+# Symptom names in order of structured questions
+symptom_names = [
+    "پرادراری", "عطش", "کاهش وزن", "ضعف", "پرخوری", "عفونت قارچی", "تاری دید",
+    "خارش", "عصبانیت", "تأخیر در بهبود", "فلج جزئی", "درد عضلانی", "ریزش مو", "چاقی"
+]
+
+# Keywords
+positive_keywords = ["بله", "آره", "دارم", "بعضی وقتا", "گاهی", "اکثرا", "همیشه", "میکنم", "شده", "زیاد", "تا حدودی"]
+negative_keywords = ["نه", "خیر", "ندارم", "نمی‌کنم", "نیستم", "اصلا", "هرگز", "کم", "به ندرت"]
+goodbye_keywords = ["خداحافظ", "خدانگهدار", "بای", "بای بای", "بعدا می‌بینمت"]
+thanks_keywords = ["ممنون", "ممنونم", "تشکر", "متشکرم"]
+question_indicators = [
+    "چیه", "چیست", "توضیح", "درباره", "چطور", "چگونه", "علائم", "علامت", "نشانه", "آیا",
+    "چه", "کجا", "از کجا", "باید چی", "چند", "چقدر", "چگونه", "چرا", "کی", "کدام"
+]
+test_intent_keywords = [
+    "تست دیابت", "دیابت دارم", "بررسی دیابت", "تشخیص دیابت", "می‌خوام تست کنم",
+    "دیابت نوع", "آزمایش دیابت", "علائم دیابت"
+]
+explanation_indicators = ["منظور", "یعنی", "چیه", "چیست", "چرا", "چه جوریه", "توضیح بده"]
+
+# Reset user state
+def reset_user_state(user_id):
+    user_data[user_id] = {
+        "age": None,
+        "gender": None,
+        "symptoms": [],
+        "fasting_blood_sugar": 0,
+        "waiting_for_questions": False,
+        "current_question_index": 0,
+        "current_symptoms": [],
+        "prediction_done": False
+    }
+    logging.info(f"Reset user state: {user_id}")
+
+# Gemini API response
+def get_gemini_response(user_message, context="general"):
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        if context == "symptom_explanation":
+            prompt = (
+                "شما یک پزشک متخصص دیابت هستید. "
+                "کاربر درباره یکی از علائم دیابت (پرادراری، عطش، کاهش وزن، ضعف، پرخوری، عفونت قارچی، تاری دید، خارش، عصبانیت، تأخیر در بهبود، فلج جزئی، درد عضلانی، ریزش مو، چاقی) سؤالی پرسیده. "
+                "توضیحی کوتاه و دقیق درباره علامت از دیدگاه دیابت بدهید و از کاربر بخواهید با بله یا خیر به سؤال اصلی پاسخ دهد. "
+                "پاسخ را به زبان فارسی و حداکثر در دو جمله ارائه کنید. "
+                f"سؤال کاربر: {user_message}\n"
+                f"سؤال اصلی: {questions[current_question_index]}"
+            )
+        else:
+            prompt = (
+                "شما یک پزشک عمومی و متخصص دیابت هستید. "
+                "به سؤالم پاسخ دهید و پاسخ را کوتاه، دقیق و به زبان فارسی ارائه کنید. "
+                "فقط اطلاعاتی مرتبط با دیابت یا سلامت عمومی ارائه دهید. "
+                "اگر سؤال نامفهوم یا نامرتبط است، کاربر را به بررسی علائم دیابت هدایت کنید. "
+                f"سؤال کاربر: {user_message}"
+            )
+        response = model.generate_content(prompt)
+        return response.text.strip()
+    except Exception as e:
+        logging.error(f"Gemini API error: {e}")
+        return "متأسفم، نمی‌توانم الان پاسخ بدم. لطفاً دوباره امتحان کنید."
+
+# Predict diabetes probability
+def predict_diabetes(input_data):
+    try:
+        prediction = model.predict(input_data, verbose=0)
+        probability = prediction[0][0] * 100
+        return probability
+    except Exception as e:
+        logging.error(f"Prediction error: {e}")
+        return 0
+
+# Routes
 @app.route("/")
 def home():
     return render_template("index.html")
 
-@app.route("/get_response", methods=["POST"])  
-def get_response():  
-    user_message = request.form["message"]  
-    user_id = request.form.get("user_id")  # گرفتن شناسه کاربر برای نگهداری وضعیت  
-
-    # ایجاد ساختار برای ذخیره اطلاعات کاربر اگر هنوز وجود نداشته باشد  
-    if user_id not in user_data:  
-        user_data[user_id] = {  
-            "age": None,  
-            "gender": None,  
-            "symptoms": []  
-        }  
-
-    print(f"ورودی کاربر: {user_message}")  
-    response = user_response(user_message, user_id)  
+@app.route("/get_response", methods=["POST"])
+def get_response():
+    user_message = request.form["message"].strip()
+    user_id = request.form.get("user_id", str(uuid.uuid4()))
+    
+    if user_id not in user_data:
+        reset_user_state(user_id)
+    
+    logging.info(f"User input: {user_message}")
+    response = process_user_input(user_message, user_id)
     return jsonify({"response": response})
 
-# Prediction function
-def predict_diabetes(input_data):
-    prediction = model.predict(input_data)  
-    probability = prediction[0][0] * 100  
-    return probability
-     
-@app.route('/health', methods=['GET'])
+@app.route("/health", methods=["GET"])
 def health_check():
-    """Health check endpoint"""
     return jsonify({"status": "healthy", "model_loaded": model is not None})
 
-def user_response(user_input, user_id): 
-    current_data = user_data[user_id]  
+# Process user input
+def process_user_input(user_input, user_id):
+    global questions, current_question_index
+    current_data = user_data[user_id]
+    user_input_clean = user_input.lower().replace("‌", "")
     responses = []
 
-    questions = [    
-        "آیا بیش از حد معمول ادرار می‌کنید؟",  
-        "آیا احساس تشنگی مداوم دارید؟",  
-        "آیا کاهش وزن ناگهانی داشته‌اید؟",  
-        "آیا ضعف بدنی دارید؟",  
-        "آیا اشتها شما به طور غیر عادی افزایش پیداکرده است؟",  
-        "آیا مبتلا به عفونت‌های قارچی هستید؟",  
-        "آیا تاری دید دارید؟",  
-        "آیا احساس خشکی و یا خارش پوست دارید؟",  
-        "آیا به سرعت عصبی می‌شوید؟",  
-        "آیا بهبود زخم‌های بدنتان به کندی صورت می‌گیرد؟",  
-        "آیا فلج جزئی (ضعف یا کاهش توانایی حرکتی در یک عضله خاص) دارید؟",  
-        "آیا در انجام فعالیت های روزمره در عضله خاصی احساس کشیدگی یا درد می‌کنید؟",  
-        "آیا ریزش مو دارید؟",  
-        "آیا اضافه وزن دارید؟"  
+    # Structured questions
+    questions = [
+        "آیا بیش از حد معمول ادرار می‌کنید؟",
+        "آیا احساس تشنگی مداوم دارید؟",
+        "آیا کاهش وزن ناگهانی داشته‌اید؟",
+        "آیا ضعف بدنی دارید؟",
+        "آیا اشتهای شما به طور غیرعادی افزایش پیدا کرده است؟",
+        "آیا مبتلا به عفونت‌های قارچی هستید؟",
+        "آیا تاری دید دارید؟",
+        "آیا احساس خشکی یا خارش پوست دارید؟",
+        "آیا به سرعت عصبی می‌شوید؟",
+        "آیا بهبود زخم‌های بدنتان به کندی صورت می‌گیرد؟",
+        "آیا فلج جزئی (ضعف یا کاهش توانایی حرکتی) دارید؟",
+        "آیا در فعالیت‌های روزمره احساس کشیدگی یا درد عضلانی دارید؟",
+        "آیا ریزش مو دارید؟",
+        "آیا اضافه وزن دارید؟"
     ]
 
-    user_input_clean = user_input.strip().lower() 
+    # 1. Check for goodbye
+    if any(word == user_input_clean for word in goodbye_keywords):
+        logging.info("Detected goodbye")
+        reset_user_state(user_id)
+        return "خدانگهدار! امیدوارم تونسته باشم کمکتون کنم.! 😊"
 
-    if user_input_clean in ["خداحافظ", "خدانگهدار", "بای", "خدافظ"]:  
-        return "امیدوارم تونسته باشم کمکتون کنم. خدانگهدار " 
-    
-    if user_input_clean in ["ممنون", "ممنونم", "تشکر", "متشکرم"]:  
-        return "خواهش میکنم. امیدوارم این اطلاعات برای شما مفید بوده باشد. آیا کمک دیگری از من بر می آید؟🌷" 
+    # 2. Check for thanks
+    if any(word in user_input_clean for word in thanks_keywords):
+        logging.info("Detected thanks")
+        return "خواهش می‌کنم!آیا میتونم کمک دیگه ای به شما بکنم؟ 🌷"
 
-    elif current_data.get("waiting_for_more_questions", False):  
-        if user_input.strip() in ["سوال", "بپرس", "پرسش", "باشه", "حتما", "شروع کن", "بپرس"]:  
-            current_data["current_question_index"] = 0  # شروع از سوال اول  
+    # 3. Check for structured questions request
+    if user_input_clean in ["سوال", "بپرس", "پرسش", "باشه", "شروع کن"]:
+        if current_data["symptoms"] or current_data["fasting_blood_sugar"] >= 126:
+            current_data["waiting_for_questions"] = True
+            current_data["current_question_index"] = 0
+            current_data["current_symptoms"] = []
+            logging.info("Starting structured questions")
+            return questions[0]
+        else:
+            logging.info("No symptoms for structured questions")
+            return "لطفاً اول علائم خود رو بگید تا سؤالات دقیق‌تری بپرسم!"
+
+    # 4. Handle structured question responses
+    if current_data.get("waiting_for_questions", False):
+        logging.info("Processing structured question response")
+        current_question_index = current_data["current_question_index"]
+        current_question = questions[current_question_index].replace("آیا", "").strip("؟").strip()
+
+        # Check for symptom explanation
+        if any(indicator in user_input_clean for indicator in explanation_indicators):
+            for key, explanation in question_explanations.items():
+                if key.lower() in current_question.lower() and any(keyword in user_input_clean for keyword in [key.lower(), key.lower().replace(" ", "")]):
+                    logging.info(f"Providing explanation for symptom: {key}")
+                    return f"{explanation} لطفاً به سؤالم با بله یا خیر پاسخ بدید: {questions[current_question_index]}"
+            # If no exact match, forward to Gemini API
+            logging.info("Forwarding symptom explanation to Gemini API")
+            gemini_response = get_gemini_response(user_input, context="symptom_explanation")
+            return gemini_response
+
+        if any(word in user_input_clean for word in positive_keywords):
+            logging.info("Positive response to structured question")
+            current_data["current_symptoms"].append(1)
+            current_data["current_question_index"] += 1
+        elif any(word in user_input_clean for word in negative_keywords):
+            logging.info("Negative response to structured question")
+            current_data["current_symptoms"].append(0)
+            current_data["current_question_index"] += 1
+        else:
+            logging.info(f"Invalid response to structured question: {user_input}")
+            return f"لطفاً به سؤالم با بله یا خیر پاسخ بدید: {questions[current_question_index]}"
+
+        if current_data["current_question_index"] < len(questions):
             return questions[current_data["current_question_index"]]
+        else:
+            logging.info("Finished structured questions")
+            logging.info(f"Current symptoms: {current_data['current_symptoms']}")
+            current_data["waiting_for_questions"] = False
+            prediction_result = predict_diabetes_response(current_data, detailed=True)
+            probability = predict_diabetes(
+                np.array([[current_data["age"], current_data["gender"]] + current_data["current_symptoms"]])
+            )
+            current_data["symptoms"] = [
+                symptom_names[i] for i, val in enumerate(current_data["current_symptoms"]) if val == 1
+            ]
+            reset_user_state(user_id)
+            return prediction_result
 
+    # 5. Extract information
+    logging.info("Extracting information")
+    info_detected = False
 
-    # بررسی سوالات متداول
-    cleaned_input = user_input.strip().replace("؟", "").replace("?", "").lower()
-    for faq_question in faq_responses:
-        if faq_question in cleaned_input:
-            return faq_responses[faq_question]
+    # Age
+    age_match = re.search(r'(\d+)\s*سال', user_input, re.IGNORECASE)
+    standalone_age_match = re.search(r'^\d+$', user_input_clean)
+    if age_match:
+        current_data["age"] = int(age_match.group(1))
+        info_detected = True
+        logging.info(f"Detected age: {current_data['age']}")
+    elif standalone_age_match:
+        current_data["age"] = int(standalone_age_match.group(0))
+        info_detected = True
+        logging.info(f"Detected age: {current_data['age']}")
 
+    # Gender
+    if any(g in user_input_clean for g in ["خانم", "زن", "دختر", "مونث"]):
+        current_data["gender"] = 0
+        info_detected = True
+        logging.info("Detected gender: خانم")
+    elif any(g in user_input_clean for g in ["آقا", "مرد", "پسر", "مذکر"]):
+        current_data["gender"] = 1
+        info_detected = True
+        logging.info("Detected gender: آقا")
 
+    # Fasting blood sugar
+    fbs_match = re.search(r'قند\s*(خون)?\s*(ناشتا)?\s*(\d+)', user_input_clean)
+    if fbs_match:
+        fbs_value = int(fbs_match.group(3))
+        current_data["fasting_blood_sugar"] = fbs_value
+        info_detected = True
+        logging.info(f"Detected fasting blood sugar: {fbs_value}")
+        responses.append(f"قند خون ناشتای {fbs_value} میلی‌گرم در دسی‌لیتر {'در محدوده نرمال است' if fbs_value < 126 else 'بالاتر از حد نرمال است'}.")
+        if fbs_value >= 126 and "قند خون بالا" not in current_data["symptoms"]:
+            current_data["symptoms"].append("قند خون بالا")
+            logging.info("Added symptom: قند خون بالا")
 
-    # جنسیت
-    if current_data["gender"] is None:
+    # Symptoms
+    symptoms_detected = []
+    for symptom, keywords in symptom_keywords.items():
+        for keyword in keywords:
+            if symptom == "قند خون بالا" and not fbs_match:
+                continue
+            pattern = re.compile(r'\b' + re.escape(keyword.replace(r'\d+', r'\d+')) + r'\b', re.IGNORECASE)
+            if pattern.search(user_input_clean) and symptom not in current_data["symptoms"]:
+                symptoms_detected.append(symptom)
+                break
+    if symptoms_detected:
+        current_data["symptoms"].extend(symptoms_detected)
+        info_detected = True
+        logging.info(f"Detected symptoms: {symptoms_detected}")
+
+    # Reset state for new conversation
+    if info_detected and all(v is None or v == 0 or v == [] for k, v in current_data.items() if k not in ["current_question_index", "current_symptoms", "prediction_done"]):
+        logging.info("Detected new conversation, resetting state")
+        reset_user_state(user_id)
+        current_data = user_data[user_id]
+        if age_match:
+            current_data["age"] = int(age_match.group(1))
+        elif standalone_age_match:
+            current_data["age"] = int(standalone_age_match.group(0))
         if any(g in user_input_clean for g in ["خانم", "زن", "دختر", "مونث"]):
             current_data["gender"] = 0
         elif any(g in user_input_clean for g in ["آقا", "مرد", "پسر", "مذکر"]):
             current_data["gender"] = 1
+        if fbs_match:
+            current_data["fasting_blood_sugar"] = fbs_value
+            if fbs_value >= 126:
+                current_data["symptoms"].append("قند خون بالا")
+        current_data["symptoms"].extend(symptoms_detected)
 
+    # 6. Check for general questions or test intent
+    pure_info = (
+        re.match(r'^\d+$', user_input_clean) or
+        re.match(r'^(خانم|زن|دختر|مونث|آقا|مرد|پسر|مذکر)$', user_input_clean) or
+        (symptoms_detected and not any(indicator in user_input_clean for indicator in question_indicators))
+    )
+    test_intent = any(keyword in user_input_clean for keyword in test_intent_keywords)
+    if (any(indicator in user_input_clean for indicator in question_indicators) or not info_detected) and not pure_info:
+        logging.info("Detected general question, forwarding to Gemini API")
+        if info_detected and current_data["age"] is not None and current_data["gender"] is not None and (current_data["symptoms"] or current_data["fasting_blood_sugar"] >= 126):
+            if not current_data["prediction_done"]:
+                logging.info("Performing initial prediction")
+                current_data["prediction_done"] = True
+                responses.append(predict_diabetes_response(current_data))
+        gemini_response = get_gemini_response(user_input)
+        responses.append(gemini_response)
+        return ", ".join(responses)
+    elif test_intent:
+        logging.info("Detected test intent")
+        return "باشه! برای بررسی دیابت، لطفاً سن، جنسیت و علائمی که دارید و بگید."
 
-    # سن
-    age_match = re.search(r'(\d+)\s*سال', user_input)
-    if age_match and current_data["age"] is None:
-        current_data["age"] = int(age_match.group(1))
-    elif current_data["age"] is None:
-        standalone_age_match = re.search(r'^\d+$', user_input_clean)
-        if standalone_age_match:
-            current_data["age"] = int(standalone_age_match.group(0))
-        else:
-            return "لطفاً سن خود را وارد کنید." 
+    # 7. Request missing information
+    if info_detected:
+        # Perform prediction if enough data
+        if (current_data["age"] is not None and
+            current_data["gender"] is not None and
+            (current_data["symptoms"] or current_data["fasting_blood_sugar"] >= 126)):
+            if not current_data["prediction_done"]:
+                logging.info("Performing initial prediction")
+                current_data["prediction_done"] = True
+                prediction_result = predict_diabetes_response(current_data)
+                responses.append(prediction_result)
+                return ", ".join(responses)
 
-    # بررسی علائم از طریق عبارت‌های متنوع
+        # Request missing information
+        if current_data["age"] is None:
+            logging.info("Requesting age")
+            responses.append("لطفاً سن خودتون رو بگید.")
+            return ", ".join(responses)
+        elif current_data["gender"] is None:
+            logging.info("Requesting gender")
+            responses.append("لطفاً جنسیت خودتون و مشخص کنید (آقا یا خانم).")
+            return ", ".join(responses)
+        elif not current_data["symptoms"] and current_data["fasting_blood_sugar"] < 126:
+            logging.info("Requesting symptoms")
+            responses.append("لطفاً علائمتان را بگویید (مثلاً پرادراری، تشنگی، ضعف یا ...).")
+            return ", ".join(responses)
 
+    # 8. Handle miscellaneous input
+    logging.info(f"Miscellaneous input: {user_input}")
+    if user_input_clean in ["سلام", "سلام علکیم", "سلام خوبی"]:
+        return "سلام! 😊 چطور می‌تونم بهتون کمک کنم؟ اگه می‌خواید دیابت رو بررسی کنیم، سن، جنسیت یا علائمتون رو بگید."
+    # Forward unknown input to Gemini API
+    logging.info("Forwarding miscellaneous input to Gemini API")
+    gemini_response = get_gemini_response(user_input)
+    return gemini_response
 
-    symptoms_in_input = []
-    for symptom, keywords in symptom_keywords.items():
-        for keyword in keywords:
-            pattern = re.escape(keyword)
-            if re.search(pattern, user_input_clean) and symptom not in current_data["symptoms"]:
-                symptoms_in_input.append(symptom)
-                break
-
-    if symptoms_in_input:
-        current_data["symptoms"].extend(symptoms_in_input)
-
-    # پیش‌بینی اولیه
-    if current_data["age"] is not None and current_data["gender"] is not None:
-        if not current_data.get("prediction_done", False):
-            current_data["prediction_done"] = True
-            prediction_result = predict_diabetes_response(current_data)
-            responses.append(prediction_result)
-            current_data["waiting_for_more_questions"] = True
-            current_data["current_question_index"] = 0
-            current_data["current_symptoms"] = []
-            return responses
-
-        elif current_data.get("waiting_for_more_questions", False):
-            if any(word in user_input_clean for word in positive_keywords):
-                current_data["current_symptoms"].append(1)
-            elif any(word in user_input_clean for word in negative_keywords):
-                current_data["current_symptoms"].append(0)
-
-            current_data["current_question_index"] += 1
-
-            if current_data["current_question_index"] < len(questions):
-                return questions[current_data["current_question_index"]]
-            else:
-                responses.append("سوالات به پایان رسید. در حال محاسبه پیش‌بینی دقیق‌تر...")
-
-                # به‌روزرسانی لیست نهایی علائم
-                current_data["symptoms"] = current_data["current_symptoms"]
-
-                # انجام پیش‌بینی
-                final_prediction_result = predict_more_accurate_diabetes_response(current_data)
-                responses.append(final_prediction_result)
-
-                # ذخیره داده در فایل بعد از کامل شدن پاسخ‌ها
-                final_probability = predict_diabetes(
-                    np.array([[
-                        current_data["age"],
-                        current_data["gender"]
-                    ] + current_data["current_symptoms"] + [0] * (14 - len(current_data["current_symptoms"]))])
-                )
-
-                save_user_data_as_row(user_id, current_data, final_probability)
-
-                # غیرفعال کردن حالت سوالات
-                current_data["waiting_for_more_questions"] = False
-
-                return responses
-
-    if current_data["age"] is None:
-        return "لطفاً سن خود را وارد کنید."
-    if current_data["gender"] is None:
-        return "لطفاً جنسیت خود را مشخص کنید (آقا یا خانم) و علائمتان را بگویید."
-
-    return " ".join(responses)
-# تابع پیش‌بینی و ارائه نتیجه  
-def predict_diabetes_response(data):  
-    age = data["age"]  
-    gender = data["gender"]  
-    symptoms = data["symptoms"]
-
-    def has(symptom):
-        return 1 if symptom in symptoms else 0
+# Diabetes prediction response
+def predict_diabetes_response(data, detailed=False):
+    age = data["age"]
+    gender = data["gender"]
+    if detailed:
+        symptoms = data["current_symptoms"]
+    else:
+        # Map textual symptoms to binary features
+        symptoms = [0] * len(symptom_names)
+        for symptom in data["symptoms"]:
+            if symptom in symptom_names:
+                symptoms[symptom_names.index(symptom)] = 1
 
     input_features = np.array([[
         age,
         gender,
-        has("پرادراری"),
-        has("عطش"),
-        has("کاهش وزن"),
-        has("ضعف"),
-        has("پرخوری"),
-        has("عفونت قارچی"),
-        has("تاری دید"),
-        has("خارش"),
-        has("عصبانیت"),
-        has("تأخیر در بهبود"),
-        has("فلج جزئی"),
-        has("درد عضلانی"),
-        has("ریزش مو"),
-        has("چاقی")
-    ]])
+        symptoms[0] if len(symptoms) > 0 else 0,  # پرادراری
+        symptoms[1] if len(symptoms) > 1 else 0,  # عطش
+        symptoms[2] if len(symptoms) > 2 else 0,  # کاهش وزن
+        symptoms[3] if len(symptoms) > 3 else 0,  # ضعف
+        symptoms[4] if len(symptoms) > 4 else 0,  # پرخوری
+        symptoms[5] if len(symptoms) > 5 else 0,  # عفونت قارچی
+        symptoms[6] if len(symptoms) > 6 else 0,  # تاری دید
+        symptoms[7] if len(symptoms) > 7 else 0,  # خارش
+        symptoms[8] if len(symptoms) > 8 else 0,  # عصبانیت
+        symptoms[9] if len(symptoms) > 9 else 0,  # تأخیر در بهبود
+        symptoms[10] if len(symptoms) > 10 else 0,  # فلج جزئی
+        symptoms[11] if len(symptoms) > 11 else 0,  # درد عضلانی
+        symptoms[12] if len(symptoms) > 12 else 0,  # ریزش مو
+        symptoms[13] if len(symptoms) > 13 else 0   # چاقی
+    ]], dtype=float)
 
-    print(f"ویژگی‌های ورودی برای مدل: {input_features}")
+    logging.info(f"Input features: {input_features}")
     probability = predict_diabetes(input_features)
-    print(f"احتمال پیش‌بینی: {probability}")
+    logging.info(f"Prediction probability: {probability}")
 
+    if data["fasting_blood_sugar"] >= 126 or "قند خون بالا" in data["symptoms"]:
+        probability = max(probability, 75)
+        logging.info("Increased probability due to high blood sugar")
 
-    if probability > 50:
-        return ("احتمال ابتلا به دیابت وجود دارد. اگر مایل باشد میتوانم با پرسش چند سوال احتمال ابتلا شما را به دیابت دقیق تر بررسی کنم "
-                "(در صورت تمایل به پرسش سوالات کلمه 'سوال' را وارد کنید)")
-    else:
-        return (" احتمال ابتلا به دیابت پایین است. اگر مایل باشید میتوانم با پرسش چند سوال احتمال ابتلا شما را به دیابت دقیق تر بررسی کنم"
-                "(در صورت تمایل به پرسش سوالات کلمه 'سوال' را وارد کنید)")
-
-# در تابع جمع‌آوری اطلاعات  
-def filter_nonnumeric(input_data):  
-    # فقط مقادیر عددی را نگه می‌داریم  
-    return [value for value in input_data if isinstance(value, (int, float))]  
-
-def predict_more_accurate_diabetes_response(data):  
-    age = data.get("age")  # سن  
-    gender = data.get("gender")  # 0 برای خانم و 1 برای آقا  
-
-    current_symptoms = data.get("current_symptoms", [])  # علائم  
-    print("Current symptoms:", current_symptoms)  # چاپ برای بررسی  
-
-    # ترکیب ویژگی‌ها  
-    input_features = [age, gender] + current_symptoms  
-
-    # فیلتر کردن علائم غیر عددی  
-    filtered_input = filter_nonnumeric(input_features)  
-
-    # بررسی تعداد ویژگی‌ها  
-    expected_features_count = 16  # تعداد ویژگی‌های مورد انتظار  
-    actual_features_count = len(filtered_input)  
-    print(f"Expected features: {expected_features_count}, Actual features: {actual_features_count}")  
-
-    # اگر تعداد ویژگی‌ها کمتر از حد انتظار باشد، باید ورودی را اصلاح کنید  
-    if actual_features_count < expected_features_count:  
-        # می‌توانید ویژگی‌های اضافی را به صورت صفر اضافه کنید  
-        filtered_input += [0] * (expected_features_count - actual_features_count)  
-
-    # تبدیل لیست به آرایه NumPy و تغییر شکل آن  
-    input_array = np.array(filtered_input).reshape(1, -1)  
-    # بررسی درستی ورودی برای مطمئن شدن از صحت آن  
-    print("Input features for prediction:", input_array)  # چاپ برای بررسی  
-
-    probability = predict_diabetes(input_array)  
-
-    if probability > 50:  
-        return ("<br>بر اساس پاسخ شما به سوالات، احتمال دیابت وجود دارد."
-               "چند توصیه برای شما دارم :<br>لطفا در اولین فرصت با پزشک متخصص مشورت کنید<br>"
-               "آزمایش‌های تشخیصی کامل‌تری نیاز است. ممکن است نیاز به درمان دارویی یا پیگیری مداوم داشته باشید.<br>"
-               "رژیم غذایی خود را اصلاح کنید، مصرف قند، نمک و چربی را کاهش دهید.<br>"
-               "ورزش منظم (حداقل ۳۰ دقیقه در روز، ۵ روز در هفته) را شروع یا حفظ کنید.<br>"
-               "اگر سابقه خانوادگی بیماری دارید، مراقب علائم هشداردهنده باشید و به هیچ عنوان تغییرات مشکوک در وضعیت سلامتی را نادیده نگیرید.")
-    else:  
-        return ("بر اساس اطلاعات وارد شده، احتمال دیابت وجود ندارد.<br>وضعیت سلامتی شما خوب است"
-                "<br>سبک زندگی سالم را حفظ کنید، مانند تغذیه متعادل و فعالیت بدنی منظم."
-                "<br>به طور منظم چکاپ عمومی انجام دهید."
-                "<br>مصرف دخانیات را به حداقل برسانید یا ترک کنید."
-                "<br>استرس خود را مدیریت کنید و خواب کافی داشته باشید.")  
-
-def save_user_data_as_row(user_id, data, probability):
-    file_path = "diabetes_user_data.csv"
-    file_exists = os.path.isfile(file_path)
-
-    symptom_list = list(symptom_keywords.keys())
-    fieldnames = ["user_id", "age", "gender"] + symptom_list + ["prediction"]
-
-    with open(file_path, mode="a", newline="", encoding="utf-8-sig") as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-
-        if not file_exists:
-            writer.writeheader()
-
-        row = {
-            "user_id": user_id,
-            "age": data.get("age"),
-            "gender": data.get("gender")
-        }
-
-        # بررسی اینکه آیا علائم به صورت اسمی هستن یا فقط 0 و 1
-        if all(isinstance(val, int) for val in data.get("symptoms", [])):
-            # اگر علائم به صورت صفر و یک باشه (مثل بعد از سوالات)
-            symptom_values = data["symptoms"]
-            for i, symptom in enumerate(symptom_list):
-                row[symptom] = symptom_values[i] if i < len(symptom_values) else 0
+    if detailed:
+        if probability > 50:
+            return (
+                "بر اساس پاسخ‌هاتون، احتمال دیابت وجود داره. چند توصیه براتون دارم:<br>"
+                "- لطفاً هرچه زودتر با پزشک متخصص مشورت کنید.<br>"
+                "- آزمایش‌های کامل‌تر مثل قند خون ناشتا یا HbA1c انجام بدید.<br>"
+                "- رژیم غذاییتون رو اصلاح کنید و قند و چربی رو کم کنید.<br>"
+                "- ورزش منظم (حداقل ۳۰ دقیقه در روز) رو شروع کنید.<br>"
+                "- اگه سابقه خانوادگی دیابت دارید، بیشتر مراقب باشید."
+            )
         else:
-            # اگر علائم به صورت اسم باشن (مثل اول مکالمه)
-            for symptom in symptom_list:
-                row[symptom] = 1 if symptom in data.get("symptoms", []) else 0
-
-        row["prediction"] = 1 if probability > 50 else 0
-
-        writer.writerow(row)
+            return (
+                "بر اساس اطلاعات، احتمال دیابت خیلی کمه. 😊<br>"
+                "- سبک زندگی سالم رو ادامه بدید (تغذیه متعادل و ورزش).<br>"
+                "- هر چند وقت یک‌بار چکاپ کنید.<br>"
+                "- استرس رو مدیریت کنید و خواب کافی داشته باشید."
+            )
+    else:
+        if probability > 50:
+            return (
+                "احتمال ابتلا به دیابت وجود داره. می‌تونم با چند سؤال دقیق‌تر بررسی کنم. "
+                "اگه موافق برسی دقیق تر هستید عبارت «سوال» را وارد کنید."
+            )
+        else:
+            return (
+                "احتمال ابتلا به دیابت پایینه. اما میتونیم تست دقیق تری داشته باشیم اگر موافقید واژه «سوال» بنویسد تا فرآیند برسی دقیق تر شروع کنیم."
+            )
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
