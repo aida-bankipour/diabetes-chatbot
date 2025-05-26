@@ -1,46 +1,46 @@
 // Chatbot interaction functionality
 
-// DOM Elements references
 const chatBox = document.getElementById("chat-box");
 const userInput = document.getElementById("user-input");
 const sendButton = document.getElementById("send-button");
 const loadingIndicator = document.getElementById("loading");
 let isDarkMode = false;
-let isSpeaking = false;
 
-// Add event listeners when DOM is loaded
-document.addEventListener('DOMContentLoaded', function () {
-    // Send welcome message
+// Wait for DOM to load
+document.addEventListener('DOMContentLoaded', () => {
     setTimeout(sendWelcomeMessage, 500);
 
-    // Listen for Enter key on input field
-    userInput.addEventListener("keydown", function (e) {
+    userInput.addEventListener("keydown", e => {
         if (e.key === "Enter") sendMessage();
     });
 
-    // Set focus to input field
     userInput.focus();
 });
 
-// Type message with typing effect
+// Typing effect
 function typeMessage(element, message) {
-    let index = 0;
-    const typingSpeed = 15; // milliseconds per character
+    return new Promise(resolve => {
+        let index = 0;
+        const typingSpeed = 15;
 
-    function typeChar() {
-        if (index < message.length) {
-            const tempDiv = document.createElement("div");
-            tempDiv.innerHTML = message.slice(0, index + 1);
-            element.innerHTML = tempDiv.innerHTML;
-            index++;
-            setTimeout(typeChar, typingSpeed);
+        function typeChar() {
+            if (index < message.length) {
+                const tempDiv = document.createElement("div");
+                tempDiv.innerHTML = message.slice(0, index + 1);
+                element.innerHTML = tempDiv.innerHTML;
+                index++;
+                setTimeout(typeChar, typingSpeed);
+            } else {
+                resolve();
+            }
         }
-    }
-    typeChar();
+
+        typeChar();
+    });
 }
 
-// Add message to chat (user or bot)
-function addMessage(message, isBot) {
+// Add message (user or bot)
+async function addMessage(message, isBot) {
     const wrapper = document.createElement("div");
     wrapper.className = "max-w-[75%] px-4 py-3 rounded-2xl text-sm leading-relaxed shadow flex items-start gap-2";
     wrapper.style.animation = "fadeInChat 0.3s ease-out forwards";
@@ -48,32 +48,26 @@ function addMessage(message, isBot) {
 
     if (isBot) {
         wrapper.classList.add("bg-indigo-100", "text-right", "self-start");
-        wrapper.innerHTML = `
-            
-            <div class="flex-1"></div>
-        `;
+        wrapper.innerHTML = `<div class="flex-1"></div>`;
         const textDiv = document.createElement("div");
         wrapper.lastElementChild.appendChild(textDiv);
         chatBox.appendChild(wrapper);
-        typeMessage(textDiv, message);
-        speakText(message);
+        await typeMessage(textDiv, message);
     } else {
         wrapper.classList.add("bg-indigo-600", "text-white", "text-left", "self-end");
         wrapper.innerHTML = `<div class='ml-2'>${message}`;
         chatBox.appendChild(wrapper);
     }
 
-    // Apply dark mode if active
     if (isDarkMode && isBot) {
         wrapper.classList.remove("bg-indigo-100");
         wrapper.classList.add("bg-gray-700", "text-white");
     }
 
-    // Scroll to bottom of chat
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Send welcome message
+// Welcome message
 function sendWelcomeMessage() {
     const welcome = `سلام! 👋 به چت‌بات تشخیص دیابت خوش آمدید. 
     من می‌توانم به شما در مورد دیابت اطلاعاتی بدهم و احتمال ابتلای شما به دیابت را بر اساس علائم ارزیابی کنم. 
@@ -81,27 +75,18 @@ function sendWelcomeMessage() {
     addMessage(welcome, true);
 }
 
-// Send message to server and get response
+// Send message to server
 async function sendMessage() {
     if (!userInput.value.trim()) return;
 
     const message = userInput.value;
     const userId = document.getElementById("user-id").value;
 
-    // Add user message to chat
     addMessage(message, false);
-
-    // Clear input and show loading
     userInput.value = "";
     loadingIndicator.classList.remove("hidden");
 
     try {
-        // Stop any current speech
-        if (isSpeaking) {
-            window.speechSynthesis.cancel();
-        }
-
-        // Send request to server
         const response = await fetch("/get_response", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -113,21 +98,14 @@ async function sendMessage() {
         }
 
         const data = await response.json();
-
-        // Add bot response to chat
-        addMessage(data.response, true);
-    }
-    // catch (error) {
-    //     console.error("Error getting response:", error);
-    //     addMessage("خطا در ارتباط با سرور. لطفاً دوباره تلاش کنید.", true);
-    // } 
-    finally {
+        await addMessage(data.response, true);
+    } finally {
         loadingIndicator.classList.add("hidden");
         userInput.focus();
     }
 }
 
-// Voice input
+// Voice input (optional feature)
 function startListening() {
     if (!('SpeechRecognition' in window) && !('webkitSpeechRecognition' in window)) {
         addMessage("متأسفانه مرورگر شما از تشخیص صدا پشتیبانی نمی‌کند.", true);
@@ -137,13 +115,12 @@ function startListening() {
     const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
     recognition.lang = "fa-IR";
 
-    // Temporary message to show listening
     const tempMsg = document.createElement("div");
     tempMsg.className = "text-center text-sm text-indigo-600 py-2 animate-pulse";
     tempMsg.textContent = "🎤 در حال گوش دادن...";
     chatBox.appendChild(tempMsg);
 
-    recognition.onresult = function (e) {
+    recognition.onresult = e => {
         if (chatBox.contains(tempMsg)) {
             chatBox.removeChild(tempMsg);
         }
@@ -152,25 +129,20 @@ function startListening() {
         sendMessage();
     };
 
-    recognition.onerror = function (e) {
+    recognition.onerror = e => {
         if (chatBox.contains(tempMsg)) {
             chatBox.removeChild(tempMsg);
         }
-        console.error("Speech recognition error:", e.error);
 
         let errorMessage = "خطا در تشخیص صدا";
-        if (e.error === 'no-speech') {
-            errorMessage = "صدایی شنیده نشد. لطفاً دوباره تلاش کنید.";
-        } else if (e.error === 'network') {
-            errorMessage = "خطای شبکه. لطفاً اتصال اینترنت خود را بررسی کنید.";
-        } else if (e.error === 'not-allowed') {
-            errorMessage = "دسترسی به میکروفن امکان‌پذیر نیست. لطفاً دسترسی را مجاز کنید.";
-        }
+        if (e.error === 'no-speech') errorMessage = "صدایی شنیده نشد. لطفاً دوباره تلاش کنید.";
+        else if (e.error === 'network') errorMessage = "خطای شبکه. لطفاً اتصال اینترنت خود را بررسی کنید.";
+        else if (e.error === 'not-allowed') errorMessage = "دسترسی به میکروفن امکان‌پذیر نیست. لطفاً دسترسی را مجاز کنید.";
 
         addMessage(errorMessage, true);
     };
 
-    recognition.onend = function () {
+    recognition.onend = () => {
         if (chatBox.contains(tempMsg)) {
             chatBox.removeChild(tempMsg);
         }
@@ -179,12 +151,11 @@ function startListening() {
     recognition.start();
 }
 
-// Toggle dark mode
+// Dark mode toggle
 function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.getElementById("main-body").classList.toggle("dark-mode", isDarkMode);
 
-    // Update chat messages for dark mode
     const messages = chatBox.querySelectorAll("div.max-w-\\[75\\%\\]");
     messages.forEach(msg => {
         if (isDarkMode) {
@@ -201,17 +172,16 @@ function toggleDarkMode() {
     });
 }
 
-// Simulate camera capture (since it's not fully implemented)
+// Simulated camera and file upload
 function simulateCapture() {
     addMessage("📸 قابلیت دوربین در نسخه نمایشی فعال نیست.", true);
 }
 
-// Simulate file upload (since it's not fully implemented)
 function simulateFileUpload() {
     addMessage("📁 قابلیت آپلود فایل در نسخه نمایشی فعال نیست.", true);
 }
 
-// Generate a unique user ID if not exists
+// Generate unique user ID
 function generateUserId() {
     let userId = localStorage.getItem('diabetes_chatbot_user_id');
     if (!userId) {
@@ -221,7 +191,7 @@ function generateUserId() {
     document.getElementById("user-id").value = userId;
 }
 
-// Quick responses for common questions
+// Quick replies
 function addQuickResponseButtons() {
     const quickResponsesDiv = document.createElement('div');
     quickResponsesDiv.className = 'flex flex-wrap gap-2 justify-center my-3';
@@ -230,21 +200,17 @@ function addQuickResponseButtons() {
         <button onclick="sendQuickResponse('علائم دیابت چیست')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full text-xs">علائم دیابت</button>
         <button onclick="sendQuickResponse('چگونه از دیابت پیشگیری کنیم')" class="bg-indigo-100 hover:bg-indigo-200 text-indigo-800 px-3 py-1 rounded-full text-xs">پیشگیری از دیابت</button>
     `;
-
     chatBox.appendChild(quickResponsesDiv);
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// Send a quick response
 function sendQuickResponse(text) {
     userInput.value = text;
     sendMessage();
 }
 
-// Initialize when page loads
-window.onload = function () {
+// Init
+window.onload = () => {
     generateUserId();
-
-    // Add quick response buttons after welcome message
     setTimeout(addQuickResponseButtons, 2000);
 };
