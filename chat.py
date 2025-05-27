@@ -45,30 +45,12 @@ symptom_keywords = {
     "خارش": ["خارش", "خشکی پوست", "خارش بدن", "پوستم می‌خاره"],
     "عصبانیت": ["عصبانیت", "تحریک‌پذیری", "زود عصبی می‌شم", "کنترل احساسات سخت شده"],
     "تأخیر در بهبود": ["تأخیر در بهبود", "زخم‌هام دیر خوب می‌شن", "خوب نشدن زخم‌ها"],
-    "فلج جزئی": ["فلج جزئی", "ضعف عضلانی", "عضلاتم ناتوان شدن", "نا توانی در حرکت"],
+    "فلج جزئی": ["فلج جزئی", "ضعف عضلانی", "عضلاتم ناتوان شدن", "ناتوانی در حرکت"],
     "درد عضلانی": ["درد عضلانی", "کشیدگی عضلات", "بدنم درد می‌کنه"],
     "سفتی عضلات": ["سفتی عضلات", "خشکی عضلات", "عضلاتم گرفته", "گرفتگی عضلات", "درد عضلانی"],
     "ریزش مو": ["ریزش مو", "کم‌پشت شدن مو", "موهام میریزه"],
     "چاقی": ["چاقی", "اضافه وزن", "خیلی چاق شدم", "وزنم رفته بالا"],
-    "قند خون بالا": [r"قند\s*(خون)?\s*(ناشتا(?:م)?)?\s*(\d+)", r"قند\s*(خون)?(?:م)?\s*بالا\s*(\d+)"]
-}
-
-# Structured question explanations
-question_explanations = {
-    "بیش از حد معمول ادرار": "یعنی بیشتر از حد معمول به دستشویی می‌روید، به‌خصوص شب‌ها.",
-    "تشنگی مداوم": "یعنی همیشه احساس تشنگی می‌کنید و حتی با نوشیدن آب هم برطرف نمی‌شود.",
-    "کاهش وزن ناگهانی": "یعنی بدون رژیم یا ورزش، وزنتان به‌سرعت کم شده است.",
-    "ضعف بدنی": "یعنی احساس خستگی یا کمبود انرژی دارید، حتی بدون فعالیت زیاد.",
-    "اشتها غیر عادی": "یعنی بیشتر از حد معمول احساس گرسنگی می‌کنید.",
-    "عفونت‌های قارچی": "یعنی عفونت‌های مکرر، مثل خارش یا سوزش در ناحیه تناسلی.",
-    "تاری دید": "یعنی اشیا را تار می‌بینید یا دیدتان واضح نیست.",
-    "خشکی یا خارش پوست": "یعنی پوستتان خشک شده یا مدام می‌خارد.",
-    "به سرعت عصبی شدن": "یعنی به‌راحتی و سریع عصبانی یا تحریک‌پذیر می‌شوید.",
-    "بهبود کند زخم‌ها": "یعنی زخم‌ها یا جراحت‌هایتان دیرتر از معمول خوب می‌شوند.",
-    "فلج جزئی": "یعنی ضعف یا کاهش توانایی حرکت در بخشی از بدن، مثل دست یا پا.",
-    "کشیدگی یا درد عضلانی": "یعنی در فعالیت‌های روزمره، عضلاتتان درد می‌کند یا می‌گیرد.",
-    "ریزش مو": "یعنی موهایتان بیشتر از حد معمول می‌ریزد یا کم‌پشت شده است.",
-    "اضافه وزن": "یعنی وزنتان بیشتر از حد سالم برای قد و سن شماست."
+    "قند خون بالا": [r"قند\s*(خون)?\s*(ناشتا(?:م)?)?(?:م)?\s*(\d+)", r"قند\s*(خون)?(?:م)?\s*بالا\s*(\d+)"]
 }
 
 # Symptom names in order of structured questions
@@ -84,13 +66,13 @@ goodbye_keywords = ["خداحافظ", "خدانگهدار", "بای", "بای ب
 thanks_keywords = ["ممنون", "ممنونم", "تشکر", "متشکرم"]
 question_indicators = [
     "چیه", "چیست", "توضیح", "درباره", "چطور", "چگونه", "علائم", "علامت", "نشانه", "آیا",
-    "چه", "کجا", "از کجا", "باید چی", "چند", "چقدر", "چگونه", "چرا", "کی", "کدام"
+    "چه", "کجا", "از کجا", "باید چی", "چند", "چقدر", "چگونه", "چرا", "کی", "کدام", "یعنی چی", "چقدره ", " چقدر است"
 ]
 test_intent_keywords = [
     "تست دیابت", "دیابت دارم", "بررسی دیابت", "تشخیص دیابت", "می‌خوام تست کنم",
-    "دیابت نوع", "آزمایش دیابت", "علائم دیابت"
+    "دیابت نوع", "آزمایش دیابت"
 ]
-explanation_indicators = ["منظور", "یعنی", "چیه", "چیست", "چرا", "چه جوریه", "توضیح بده"]
+invalid_response_keywords = ["نمی‌دونم", "نمیدونم", "نمی‌فهمم", "نمیفهمم", "بلخ", "نچ"]
 
 # Reset user state
 def reset_user_state(user_id):
@@ -119,7 +101,8 @@ def reset_user_state(user_id):
             "آیا ریزش مو دارید؟",
             "آیا اضافه وزن دارید؟"
         ],
-        "previous_symptoms": []  # برای ذخیره زمینه علائم قبلی
+        "previous_symptoms": [],
+        "expecting_age": False  # پرچم برای انتظار سن
     }
     logging.info(f"Reset user state: {user_id}")
 
@@ -137,7 +120,7 @@ def get_gemini_response(user_message, context="general", user_id=None):
                 f"سؤال اصلی: {user_data[user_id]['questions'][user_data[user_id]['current_question_index']]}"
             )
         else:
-            previous_symptoms = user_data[user_id].get("previous_symptoms", [])
+            previous_symptoms = user_data[user_id].get("previous_symptoms", []) if user_id else []
             prompt = (
                 "شما یک چت‌بات تشخیص اولیه دیابت هستید که به زبان فارسی پاسخ می‌دهید. "
                 "به سؤال کاربر پاسخ کوتاه، دقیق و کاربرپسند بدهید. "
@@ -151,7 +134,7 @@ def get_gemini_response(user_message, context="general", user_id=None):
         return response.text.strip()
     except Exception as e:
         logging.error(f"Gemini API error: {e}")
-        return "متأسفم، نمی‌توانم الان پاسخ بدم. لطفاً سن، جنسیت، علائم (مثل پرادراری) یا قند خون‌تون رو بگید ."
+        return "متأسفم، نمی‌توانم الان پاسخی بدهم. لطفاً سن، جنسیت، علائم (مثل پرادراری) یا قند خون‌تان را بگویید."
 
 # Predict diabetes probability
 def predict_diabetes(input_data):
@@ -172,9 +155,9 @@ def predict_diabetes_response(data, detailed=False):
     # Check for hypoglycemia
     if fasting_blood_sugar is not None and fasting_blood_sugar < 70:
         return (
-            f"قند خون {fasting_blood_sugar} میلی‌گرم در دسی‌لیتر خیلی پایینه (هیپوگلیسمی). "
-            "لطفاً سریع یه منبع قندی (مثل آب‌میوه یا قرص گلوکز) بخورید و ۱۵ دقیقه بعد قند خون‌تون رو چک کنید. "
-            "برای بررسی بیشتر میتونید، سن و علائم‌تون (مثل ضعف یا تشنگی) رو بگید."
+            f"قند خون {fasting_blood_sugar} میلی‌گرم در دسی‌لیتر خیلی پایین است (هیپوگلیسمی). "
+            "لطفاً سریع یک منبع قندی (مثل آب‌میوه یا قرص گلوکز) بخورید و ۱۵ دقیقه بعد قند خون‌ خود را چک کنید. "
+            "برای بررسی بیشتر می‌توانید، سن و علائم‌تان (مثل ضعف یا تشنگی) رو بگویید."
         )
 
     if detailed:
@@ -197,31 +180,37 @@ def predict_diabetes_response(data, detailed=False):
     if detailed:
         if probability > 50:
             return (
-                "بر اساس پاسخ‌هاتون، احتمال دیابت وجود داره. چند توصیه براتون دارم:<br>"
+                "بر اساس پاسخ‌های شما، احتمال دیابت وجود دارد. چند توصیه براتان دارم:<br>"
                 "- لطفاً هرچه زودتر با پزشک متخصص مشورت کنید.<br>"
                 "- آزمایش‌های کامل‌تر مثل قند خون ناشتا یا HbA1c انجام بدید.<br>"
-                "- رژیم غذاییتون رو اصلاح کنید و قند و چربی رو کم کنید.<br>"
-                "- ورزش منظم (حداقل ۳۰ دقیقه در روز) رو شروع کنید.<br>"
-                "- اگه سابقه خانوادگی دیابت دارید، بیشتر مراقب باشید."
+                "- رژیم غذایی خود را اصلاح کنید و مصرف قند و چربی را کم کنید.<br>"
+                "- ورزش منظم (حداقل ۳۰ دقیقه در روز) را شروع کنید.<br>"
+                "- اگر سابقه خانوادگی دیابت دارید، بیشتر مراقب باشید."
             )
         else:
             return (
-                "بر اساس اطلاعات،خوشبختانه احتمال دیابت وجود ندارد یا حداقل پایین است. 😊<br>"
-                "- سبک زندگی سالم رو ادامه بدید (تغذیه متعادل و ورزش).<br>"
+                "بر اساس اطلاعات، خوشبختانه احتمال دیابت وجود ندارد یا حداقل پایین است. 😊<br>"
+                "- سبک زندگی سالم را ادامه دهید (تغذیه متعادل و ورزش).<br>"
                 "- هر چند وقت یک‌بار چکاپ کنید.<br>"
-                "- استرس رو مدیریت کنید و خواب کافی داشته باشید."
+                "- استرس را مدیریت کنید و خواب کافی داشته باشید."
             )
     else:
         if probability > 50:
             return (
-                "با توجه به اطلاعات شما، احتمال دیابت وجود دارد. بهتر است "
-                "برای بررسی دقیق‌تر، کلمه «سوال» را وارد کنید."
+                "با توجه به اطلاعات شما، احتمال دیابت وجود دارد. "
+                "برای بررسی دقیق‌تر، لطفاً کلمه «سوال» را وارد کنید تا تست کامل‌تری انجام دهیم."
             )
         else:
-            return (
-                "احتمال ابتلا به دیابت در شما پایین است. "
-                "اما برای بررسی دقیق‌تر، میتوانید با وارد کردن کلمه «سوال» در یک تست کوچک شرکت کنید."
-            )
+            if data["symptoms"] or data["fasting_blood_sugar"] is not None:
+                return (
+                    "احتمال ابتلا به دیابت در شما پایین است. "
+                    "برای اطمینان بیشتر، می‌توانید با وارد کردن کلمه «سوال» در یک تست دقیق‌تر شرکت کنید."
+                )
+            else:
+                return (
+                    "احتمال ابتلا به دیابت در شما پایین است. "
+                    "اگه علائم خاصی (مثل پرادراری یا عطش) دارید، لطفاً بگویید یا کلمه «سوال» را برای برسی دقیق تر وارد کنید."
+                )
 
 # Routes
 @app.route("/")
@@ -263,25 +252,21 @@ def process_user_input(user_input, user_id):
         logging.info("Detected thanks")
         if any(word in user_input_clean for word in goodbye_keywords):
             reset_user_state(user_id)
-            return "خدانگهدار! خوشحال می‌شم بازم بتونم کمکتون کنم. 😊"
-        return "خواهش می‌کنم! اگه سوال دیگه ای داشتید یا با علائم دیگری مواجه شدید روی کمک من حساب کنید."
+            return "خدانگهدار! خوشحال میشوم باز هم بتوانم کمکتان کنم. 😊"
+        return "خواهش می‌کنم! اگر سوال دیگری دارید یا خواستید موضوع دیگری را بررسی کنیم، من آماده هستم."
 
     # 3. Handle structured question responses
     if current_data.get("waiting_for_questions", False):
         logging.info("Processing structured question response")
         current_question_index = current_data["current_question_index"]
-        current_question = current_data["questions"][current_question_index].replace("آیا", "").strip("؟").strip()
-
-        # Check for symptom explanation
-        if any(indicator in user_input_clean for indicator in explanation_indicators):
-            for key, explanation in question_explanations.items():
-                if key.lower() in current_question.lower() and any(keyword in user_input_clean for keyword in [key.lower(), key.lower().replace(" ", "")]):
-                    logging.info(f"Providing explanation for symptom: {key}")
-                    return f"{explanation} لطفاً با بله یا خیر پاسخ بدید: {current_data['questions'][current_question_index]}"
+        
+        # Check for symptom explanation or general question during structured questions
+        if any(indicator in user_input_clean for indicator in question_indicators):
             logging.info("Forwarding symptom explanation to Gemini API")
             gemini_response = get_gemini_response(user_input, context="symptom_explanation", user_id=user_id)
             return gemini_response
 
+        # Check for valid responses
         if any(word in user_input_clean for word in positive_keywords):
             logging.info("Positive response to structured question")
             current_data["current_symptoms"].append(1)
@@ -290,12 +275,12 @@ def process_user_input(user_input, user_id):
             logging.info("Negative response to structured question")
             current_data["current_symptoms"].append(0)
             current_data["current_question_index"] += 1
-        else:
+        elif any(word in user_input_clean for word in invalid_response_keywords):
             logging.info(f"Invalid response to structured question: {user_input}")
-            for key, explanation in question_explanations.items():
-                if key.lower() in current_question.lower():
-                    return f"{explanation} لطفاً با بله یا خیر پاسخ بدید: {current_data['questions'][current_question_index]}"
-            return f"لطفاً با بله یا خیر پاسخ بدید: {current_data['questions'][current_question_index]}"
+            return f"لطفاً با بله یا خیر پاسخ دهید: {current_data['questions'][current_question_index]}"
+        else:
+            logging.info(f"Unrecognized response to structured question: {user_input}")
+            return f"لطفاً با بله یا خیر پاسخ دهید: {current_data['questions'][current_question_index]}"
 
         if current_data["current_question_index"] < len(current_data["questions"]):
             return current_data["questions"][current_data["current_question_index"]]
@@ -315,9 +300,10 @@ def process_user_input(user_input, user_id):
     logging.info("Extracting information")
     info_detected = False
     symptoms_detected = []
+    unrelated_symptoms = []
 
-    # Fasting blood sugar (priority over age)
-    fbs_match = re.search(r'قند\s*(خون)?\s*(ناشتا(?:م)?)?\s*(\d+)', user_input_clean)
+    # Fasting blood sugar
+    fbs_match = re.search(r'قند\s*(خون)?\s*(ناشتا(?:م)?)?(?:م)?\s*(\d+)', user_input_clean)
     if fbs_match:
         fbs_value = int(fbs_match.group(3))
         current_data["fasting_blood_sugar"] = fbs_value
@@ -325,45 +311,56 @@ def process_user_input(user_input, user_id):
         logging.info(f"Detected fasting blood sugar: {fbs_value}")
         if fbs_value < 70:
             responses.append(
-                f"قند خون {fbs_value} میلی‌گرم در دسی‌لیتر خیلی پایینه (هیپوگلیسمی). "
-                "لطفاً سریع یه منبع قندی (مثل آب‌میوه) بخورید و ۱۵ دقیقه بعد قند خون‌تون رو چک کنید."
+                f"قند خون {fbs_value} میلی‌گرم در دسی‌لیتر خیلی پایین است (هیپوگلیسمی). "
+                "لطفاً سریعا یک منبع قندی (مثل آب‌میوه) مصرف کنید و ۱۵ دقیقه بعد قند خون‌تان را مجدد چک کنید."
             )
         elif fbs_value >= 100 and fbs_value < 126:
             responses.append(
-                f"قند خون ناشتای {fbs_value} میلی‌گرم در دسی‌لیتر در محدوده پیش‌دیابت قرار داره. "
-                "این یعنی ممکنه در معرض خطر دیابت باشید."
+                f"قند خون ناشتای {fbs_value} میلی‌گرم در دسی‌لیتر در محدوده پیش‌دیابت قرار دارد. "
+                "این یعنی ممکن است در معرض خطر دیابت باشید."
             )
         elif fbs_value >= 126 and "قند خون بالا" not in current_data["symptoms"]:
             current_data["symptoms"].append("قند خون بالا")
             logging.info("Added symptom: قند خون بالا")
-            responses.append(f"قند خون ناشتای {fbs_value} میلی‌گرم در دسی‌لیتر بالاتر از حد نرماله.")
+            responses.append(f"قند خون ناشتای {fbs_value} میلی‌گرم در دسی‌لیتر بالاتر از حد نرمال است.")
 
-    # Age (only if no fasting blood sugar detected)
-    if not fbs_match:
+    # Age (handle both "X سال" and standalone number if expecting age)
+    if current_data["expecting_age"]:
         age_match = re.search(r'(\d+)\s*سال', user_input, re.IGNORECASE)
         standalone_age_match = re.search(r'\b(\d+)\b(?!\s*%)', user_input_clean)
         if age_match:
             age = int(age_match.group(1))
-            if 0 <= age <= 99:  # بررسی محدوده سنی معقول
+            if 0 <= age <= 99:
                 current_data["age"] = age
                 info_detected = True
+                current_data["expecting_age"] = False
                 logging.info(f"Detected age: {current_data['age']}")
         elif standalone_age_match:
             age = int(standalone_age_match.group(1))
-            if 0 <= age <= 99:  # بررسی محدوده سنی معقول
+            if 0 <= age <= 99:
+                current_data["age"] = age
+                info_detected = True
+                current_data["expecting_age"] = False
+                logging.info(f"Detected age: {current_data['age']}")
+    elif not fbs_match:  # Only check for age if no FBS detected
+        age_match = re.search(r'(\d+)\s*سال', user_input, re.IGNORECASE)
+        if age_match:
+            age = int(age_match.group(1))
+            if 0 <= age <= 99:
                 current_data["age"] = age
                 info_detected = True
                 logging.info(f"Detected age: {current_data['age']}")
 
-    # Gender
-    if any(g in user_input_clean for g in ["خانم", "زن", "دختر", "مونث"]):
-        current_data["gender"] = 0
-        info_detected = True
-        logging.info("Detected gender: خانم")
-    elif any(g in user_input_clean for g in ["آقا", "مرد", "پسر", "مذکر"]):
-        current_data["gender"] = 1
-        info_detected = True
-        logging.info("Detected gender: آقا")
+    # Gender (only set if not previously set)
+    if current_data["gender"] is None:
+        if any(g in user_input_clean for g in ["خانم", "زن", "دختر", "مونث"]):
+            current_data["gender"] = 0
+            info_detected = True
+            logging.info("Detected gender: خانم")
+        elif any(g in user_input_clean for g in ["آقا", "مرد", "پسر", "مذکر"]):
+            current_data["gender"] = 1
+            info_detected = True
+            logging.info("Detected gender: آقا")
 
     # Symptoms
     for symptom, keywords in symptom_keywords.items():
@@ -374,6 +371,17 @@ def process_user_input(user_input, user_id):
             if pattern.search(user_input_clean) and symptom not in current_data["symptoms"]:
                 symptoms_detected.append(symptom)
                 break
+
+    # Check for unrelated symptoms
+    unrelated_symptom_patterns = [
+        r'سردرد', r'تهوع', r'سرگیجه', r'درد شکم', r'تب', r'سرفه', r'گلودرد', r'خونریزی',
+        r'کمردرد', r'پهلو\s*درد', r'فشار\s*(خون)?\s*بالا'
+    ]
+    for pattern in unrelated_symptom_patterns:
+        if re.search(pattern, user_input_clean):
+            unrelated_symptoms.append(user_input_clean)
+            break
+
     if symptoms_detected:
         current_data["symptoms"].extend(symptoms_detected)
         info_detected = True
@@ -384,27 +392,42 @@ def process_user_input(user_input, user_id):
     if "علائمی ندارم" in user_input_clean or "هیچ علامتی" in user_input_clean:
         logging.info("Detected no symptoms")
         reset_user_state(user_id)
-        return "به نظر می‌رسه مشکلی ندارید! براتون آرزوی سلامتی می‌کنم. 😊 اگه علائم جدیدی پیدا کردید، بگید تا بررسی کنیم."
+        return "به نظر میرسد مشکلی ندارید! برای شما آرزوی سلامتی می‌کنم. 😊 اگه با علائم جدیدی روبه رو شدید، میتوانید روی کمک من حساب کنید."
 
-    # 5. Request missing information based on provided data
+    # 5. Handle general questions or test intent
+    if any(indicator in user_input_clean for indicator in question_indicators):
+        logging.info("Detected general question")
+        gemini_response = get_gemini_response(user_input, user_id=user_id)
+        responses.append(gemini_response)
+        return ", ".join(responses)
+
+    # 6. Handle unrelated symptoms or mixed symptoms
+    if unrelated_symptoms:
+        logging.info("Forwarding unrelated or mixed symptoms to Gemini API")
+        gemini_response = get_gemini_response(user_input, user_id=user_id)
+        responses.append(gemini_response)
+        return ", ".join(responses)
+
+    # 7. Request missing information
     if info_detected:
         missing_info = []
         if current_data["age"] is None:
-            missing_info.append("سن‌تون")
+            missing_info.append("سن‌تان")
+            current_data["expecting_age"] = True  # Set expecting_age flag
         if current_data["gender"] is None:
-            missing_info.append("جنسیت‌تون")
-        if not current_data["symptoms"] and current_data["fasting_blood_sugar"] is None:
-            missing_info.append("علائم‌تون (مثل پرادراری، تشنگی) یا قند خون ناشتا")
+            missing_info.append("جنسیت‌ خود (آقا یا خانم)")
+        if not current_data["symptoms"] and current_data["fasting_blood_sugar"] is None and not unrelated_symptoms:
+            missing_info.append("علائم‌تان (مثل پرادراری، تشنگی) یا قند خون ناشتا")
 
         if missing_info:
             logging.info(f"Requesting missing information: {', '.join(missing_info)}")
-            responses.append(f"لطفاً {', '.join(missing_info)} رو بگید تا بتونم بررسی دقیق‌تری انجام بدم.")
+            responses.append(f"لطفاً {', '.join(missing_info)} را بگویید تا بتوانم بررسی دقیق‌تری انجام بدهم.")
             return ", ".join(responses)
 
-    # 6. Handle test intent or structured questions request
+    # 8. Handle test intent or structured questions
     test_intent = any(keyword in user_input_clean for keyword in test_intent_keywords)
-    if user_input_clean in ["سوال", "بپرس", "پرسش", "باشه", "شروع کن"] or test_intent:
-        if current_data["age"] is not None and current_data["gender"] is not None and (current_data["symptoms"] or current_data["fasting_blood_sugar"] is not None):
+    if user_input_clean == "سوال" or test_intent:
+        if current_data["age"] is not None and current_data["gender"] is not None:
             current_data["waiting_for_questions"] = True
             current_data["current_question_index"] = 0
             current_data["current_symptoms"] = []
@@ -414,15 +437,14 @@ def process_user_input(user_input, user_id):
             logging.info("Insufficient data for structured questions")
             missing_info = []
             if current_data["age"] is None:
-                missing_info.append("سن‌تون")
+                missing_info.append("سن‌تان")
+                current_data["expecting_age"] = True
             if current_data["gender"] is None:
-                missing_info.append("جنسیت‌تون (آقا یا خانم)")
-            if not current_data["symptoms"] and current_data["fasting_blood_sugar"] is None:
-                missing_info.append("علائم‌تون (مثل پرادراری، تشنگی) یا قند خون ناشتا")
-            responses.append(f"لطفاً {', '.join(missing_info)} رو بگید تا تست رو شروع کنیم.")
+                missing_info.append("جنسیت‌ خود (آقا یا خانم)")
+            responses.append(f"لطفاً {', '.join(missing_info)} را بگویید تا برسی را شروع کنیم.")
             return ", ".join(responses)
 
-    # 7. Perform prediction if all data provided
+    # 9. Perform prediction if all data provided
     if (current_data["age"] is not None and
         current_data["gender"] is not None and
         (current_data["symptoms"] or current_data["fasting_blood_sugar"] is not None)):
@@ -430,32 +452,15 @@ def process_user_input(user_input, user_id):
             logging.info("Performing initial prediction")
             current_data["prediction_done"] = True
             prediction_result = predict_diabetes_response(current_data)
-            responses.append(f"ممنون که گفتید سن‌تون {current_data['age']} ساله و جنسیت‌تون {'خانم' if current_data['gender'] == 0 else 'آقا'} است. {prediction_result}")
+            responses.append(f"ممنون که گفتید سن‌تان {current_data['age']} سال و جنسیت‌تان {'خانم' if current_data['gender'] == 0 else 'آقا'} است. {prediction_result}")
             return ", ".join(responses)
-
-    # 8. Handle irrelevant symptoms or general questions
-    if info_detected and not current_data["symptoms"] and current_data["fasting_blood_sugar"] is None:
-        logging.info("Forwarding irrelevant symptoms to Gemini API")
-        gemini_response = get_gemini_response(user_input, user_id=user_id)
-        responses.append(gemini_response)
-        return ", ".join(responses)
-
-    # 9. Handle general questions or miscellaneous input
-    if any(indicator in user_input_clean for indicator in question_indicators):
-        logging.info("Detected general question")
-        gemini_response = get_gemini_response(user_input, user_id=user_id)
-        responses.append(gemini_response)
-        return ", ".join(responses)
 
     # 10. Handle greetings or unknown input
     if user_input_clean in ["سلام", "سلام علکیم", "سلام خوبی"]:
-        return "سلام! 😊 برای بررسی دیابت، لطفاً سن، جنسیت، علائم (مثل پرادراری) یا قند خون‌تون رو بگید (مثلاً '30 سال، آقا، پرادراری') یا بنویسید «سوال» برای برسی دقیق تر."
+        return "سلام! 😊 برای بررسی دیابت، لطفاً سن، جنسیت، علائم (مثل پرادراری) یا قند خون‌ خود را بگویید (مثلاً '30 سال، آقا، پرادراری') یا برای برسی دقیق تر واژه «سوال» را وارد کنید."
     logging.info("Forwarding miscellaneous input to Gemini API")
     gemini_response = get_gemini_response(user_input, user_id=user_id)
     return gemini_response
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=False)
-
-
- 
