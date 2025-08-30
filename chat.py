@@ -32,72 +32,6 @@ except Exception as e:
 # User state storage
 user_data = {}
 
-# Symptom keywords
-symptom_keywords = {
-    "پرادراری": [
-        "پرادراری", "ادرار زیاد", "ادرار بیش از حد", "زیاد دستشویی می‌رم", "دستشویی رفتن زیاد",
-        "شب‌ها بیدار می‌شم برای ادرار", "تکرر ادرار", "تکررادرار", "زیاد ادرار می‌کنم", "دسشویی", "Polyuria",
-        "شبا چندبار دستشویی می‌رم", "مدام دستشویی لازم دارم", "ادرارم زیاده", "ادرار", "دستشویی", "دفع ادرار", "جیش", "دسشوییم", "ادرارم"
-    ],
-    "عطش": [
-        "عطش", "تشنگی", "خیلی تشنه‌ام", "مدام آب می‌خورم", "زیاد آب می‌خورم", "پرنوشی", "استسقاء", "آب", "خشکی دهن", "خشکی زبان", "Polydipsia",
-        "همیشه تشنه‌ام", "دهنم خشک می‌شه", "خشکی دهان", "تشنگی شدید", "نمی‌تونم تشنگی‌مو کنترل کنم", "استسقا", "تشنه", "پرنوشی"
-    ],
-    "کاهش وزن": [
-        "کاهش وزن", "افت وزن", "وزنم کم شده", "بدون دلیل وزن کم کردم", "لاغر شدم", "لاغر", "کم شدن وزن",
-        "وزنم داره کم می‌شه", "وزن کم کردن بی‌دلیل", "اخیرا لاغر شدم", "وزنم یهو کم شده", "وزن کم کردم"
-    ],
-    "ضعف": [
-        "ضعف", "بی‌حالی", "انرژی ندارم", "همیشه خسته‌ام", "احساس ضعف", "زود خسته می‌شم", "خسته", "کسل", "کسلی", "خستگی", "بی حال", "خواب ", "خوابم",
-        "خستگی زیاد", "بی‌جونم", "ناتوانی", "احساس خستگی مداوم", "قدرت ندارم", "خسته و کسل"
-    ],
-    "پرخوری": [
-        "پرخوری", "زیاد می‌خورم", "اشتهام زیاد شده", "گرسنگی مداوم دارم", "همیشه گرسنه‌ام", "پراشتهایی", "اشتها", "میل", "شیرین", "شیرینی", "بخورم", "میخورم",
-        "اشتهای زیادی دارم", "نمی‌تونم جلوی خوردنم رو بگیرم", "مدام دلم غذا می‌خواد", "اشتهام", "میلم", "خوردن"
-    ],
-    "عفونت قارچی": [
-        "عفونت قارچی", "عفونت در ناحیه تناسلی", "سوزش یا خارش ناحیه تناسلی", "عفونت واژن", "قارچ", "خارش ناحیه تناسلی", "بوی بد",
-        "خارش تناسلی", "سوزش هنگام ادرار", "عفونت مکرر قارچی", "قارچ پوستی"
-    ],
-    "تاری دید": [
-        "تاری دید", "کاهش میدان دید", "چشمام تار می‌بینه", "دیدم خوب نیست", "دیدم تار شده", "تار", "محو", "بینایی", "دیدم", "بیناییم",
-        "چشمام تار شده", "دیدم ضعیف شده", "نمی‌تونم واضح ببینم", "تاری تو دید", "چشمام درست نمی‌بینه"
-    ],
-    "خارش": [
-        "خارش", "خشکی پوست", "خارش بدن", "پوستم می‌خاره", "خارش شدید", "پوستم خشک و خارش‌دار",
-        "خارش پوست", "همه‌جای بدنم می‌خاره", "خارش مداوم", "پوستم خشک", "خارش"
-    ],
-    "عصبانیت": [
-        "عصبانیت", "تحریک‌پذیری", "زود عصبی می‌شم", "کنترل احساسات سخت شده", "زود جوش میارم", "عصبانی", "عصبی", "پرخاشگر", "زود واکنش", "تحریک پذیر",
-        "عصبی شدم", "حوصله‌ام کم شده", "تحملم کم شده", "زود از کوره در می‌رم"
-    ],
-    "تأخیر در بهبود": [
-        "تأخیر در بهبود", "زخم‌هام دیر خوب می‌شن", "خوب نشدن زخم‌ها", "زخمام دیر جوش می‌خوره", "زخم", "ضخم",
-        "جای زخم دیر خوب می‌شه", "بهبود زخم کند", "زخم‌هام نمی‌بنده"
-    ],
-    "فلج جزئی": [
-        "فلج جزئی", "ضعف عضلانی", "عضلاتم ناتوان شدن", "ناتوانی در حرکت", "عضله‌هام ضعیف شدن", 
-        "نمی‌تونم راحت حرکت کنم", "ضعف در عضلات", "حرکت کردن برام سخت شده"
-    ],
-    "درد عضلانی": [
-        "درد عضلانی", "کشیدگی عضلات", "بدنم درد می‌کنه", "عضلاتم درد داره", "درد تو بدنم", "گرفتگی", "گرفتگی بدن",
-        "بدن‌درد", "عضله‌هام درد می‌کنه", "درد ماهیچه‌ای", "سفتی عضلات", "خشکی عضلات", "عضلاتم گرفته", "گرفتگی عضلات", "درد عضلانی",
-        "عضلاتم سفت شدن", "گرفتگی ماهیچه", "عضله‌هام منقبض شده"
-    ],
-    "ریزش مو": [
-        "ریزش مو", "کم‌پشت شدن مو", "موهام میریزه", "موهای سرم کم شده", "ریزش موی شدید", "مو",
-        "موهام داره می‌ریزه", "کم شدن مو", "طاسی"
-    ],
-    "چاقی": [
-        "چاقی", "اضافه وزن", "خیلی چاق شدم", "وزنم رفته بالا", "وزن زیاد کردم", "چاق", "سنگین وزن",
-        "چاق شدم", "وزنم بالاست", "اضافه وزن دارم"
-    ],
-    "قند خون بالا": [
-        r"قند\s*(خون)?\s*(ناشتا(?:م)?)?(?:م)?\s*(\d+)", r"قند\s*(خون)?(?:م)?\s*بالا\s*(\d+)",
-        "قند خونم بالاست", "قندم بالاست", "قند خون بالا دارم"
-    ]
-}
-
 # Symptom names in order of structured questions
 symptom_names = [
     "پرادراری", "عطش", "کاهش وزن", "ضعف", "پرخوری", "عفونت قارچی", "تاری دید",
@@ -151,11 +85,11 @@ def reset_user_state(user_id):
             "آیا اضافه وزن دارید؟"
         ],
         "previous_symptoms": [],
-        "expecting_age": False  # پرچم برای انتظار سن
+        "expecting_age": False
     }
     logging.info(f"Reset user state: {user_id}")
 
-# Gemini API response
+# Gemini API response for general questions
 def get_gemini_response(user_message, context="general", user_id=None):
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
@@ -184,6 +118,33 @@ def get_gemini_response(user_message, context="general", user_id=None):
         logging.error(f"Gemini API error: {e}")
         return "متأسفم، نمی‌توانم الان پاسخی بدهم. لطفاً سن، جنسیت، علائم (مثل پرادراری) یا قند خون‌تان را بگویید."
 
+# Gemini API for symptom detection
+def detect_symptoms_with_gemini(user_input):
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        prompt = f"""
+        متن زیر مربوط به علائم یک بیمار است. با توجه به لیست علائم زیر، بررسی کن 
+        که کاربر به کدام علائم اشاره کرده و فقط خروجی را به شکل یک آرایه 0 و 1 (بدون هیچ متن اضافی) نمایش بده.
+
+        لیست علائم به ترتیب:
+        {', '.join(symptom_names)}
+
+        متن:
+        "{user_input}"
+
+        فقط خروجی:
+        """
+        response = model.generate_content(prompt)
+        symptom_array = eval(response.text.strip())
+        if len(symptom_array) != len(symptom_names):
+            logging.error(f"Gemini symptom detection returned incorrect array length: {len(symptom_array)}")
+            return []
+        detected_symptoms = [symptom_names[i] for i, val in enumerate(symptom_array) if val == 1]
+        return detected_symptoms
+    except Exception as e:
+        logging.error(f"Gemini symptom detection error: {e}")
+        return []
+
 # Predict diabetes probability
 def predict_diabetes(input_data):
     try:
@@ -200,7 +161,6 @@ def predict_diabetes_response(data, detailed=False):
     gender = data["gender"]
     fasting_blood_sugar = data["fasting_blood_sugar"]
     
-    # Check for hypoglycemia
     if fasting_blood_sugar is not None and fasting_blood_sugar < 70:
         return (
             f"قند خون {fasting_blood_sugar} میلی‌گرم در دسی‌لیتر خیلی پایین است (هیپوگلیسمی). "
@@ -270,7 +230,7 @@ def home():
 def get_response():
     user_message = request.form["message"].strip()
     user_id = session.get("user_id", str(uuid.uuid4()))
-    session["user_id"] = user_id  # ذخیره user_id در session
+    session["user_id"] = user_id
     
     if user_id not in user_data:
         reset_user_state(user_id)
@@ -308,13 +268,11 @@ def process_user_input(user_input, user_id):
         logging.info("Processing structured question response")
         current_question_index = current_data["current_question_index"]
         
-        # Check for symptom explanation or general question during structured questions
         if any(indicator in user_input_clean for indicator in question_indicators):
             logging.info("Forwarding symptom explanation to Gemini API")
             gemini_response = get_gemini_response(user_input, context="symptom_explanation", user_id=user_id)
             return gemini_response
 
-        # Check for valid responses
         if any(word in user_input_clean for word in positive_keywords):
             logging.info("Positive response to structured question")
             current_data["current_symptoms"].append(1)
@@ -417,15 +375,15 @@ def process_user_input(user_input, user_id):
             info_detected = True
             logging.info("Detected gender: آقا")
 
-    # Symptoms
-    for symptom, keywords in symptom_keywords.items():
-        for keyword in keywords:
-            if symptom == "قند خون بالا" and not fbs_match:
-                continue
-            pattern = re.compile(r'\b' + re.escape(keyword.replace(r'\d+', r'\d+')) + r'\b', re.IGNORECASE)
-            if pattern.search(user_input_clean) and symptom not in current_data["symptoms"]:
-                symptoms_detected.append(symptom)
-                break
+    # Symptoms detection using Gemini
+    symptoms_detected = detect_symptoms_with_gemini(user_input)
+    if symptoms_detected:
+        for symptom in symptoms_detected:
+            if symptom not in current_data["symptoms"] and symptom != "قند خون بالا":
+                current_data["symptoms"].append(symptom)
+                info_detected = True
+                current_data["previous_symptoms"].append(symptom)
+                logging.info(f"Detected symptom: {symptom}")
 
     # Check for unrelated symptoms
     unrelated_symptom_patterns = [
@@ -442,9 +400,7 @@ def process_user_input(user_input, user_id):
             break
 
     if symptoms_detected:
-        current_data["symptoms"].extend(symptoms_detected)
         info_detected = True
-        current_data["previous_symptoms"].extend(symptoms_detected)
         logging.info(f"Detected symptoms: {symptoms_detected}")
 
     # Check for "no symptoms"
@@ -453,7 +409,7 @@ def process_user_input(user_input, user_id):
         reset_user_state(user_id)
         return "به نظر میرسد مشکلی ندارید! برای شما آرزوی سلامتی می‌کنم. 😊 اگه با علائم جدیدی روبه رو شدید، میتوانید روی کمک من حساب کنید."
 
-    # 5. Handle general questions or test intent
+    # 5. Handle general questions or unrelated symptoms
     if any(indicator in user_input_clean for indicator in question_indicators) or unrelated_symptoms:
         logging.info("Detected general question or unrelated symptoms")
         gemini_response = get_gemini_response(user_input, user_id=user_id)
@@ -465,7 +421,7 @@ def process_user_input(user_input, user_id):
         missing_info = []
         if current_data["age"] is None:
             missing_info.append("سن‌تان")
-            current_data["expecting_age"] = True  # Set expecting_age flag
+            current_data["expecting_age"] = True
         if current_data["gender"] is None:
             missing_info.append("جنسیت‌ خود (آقا یا خانم)")
         if not current_data["symptoms"] and current_data["fasting_blood_sugar"] is None and not unrelated_symptoms:
